@@ -184,8 +184,9 @@ class BS(object):
         self.L = nMaxLink
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
+        filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'
         if(loadENV):# load Topology
-            with open('./CellFreeCLCA_RL/data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+'.pkl','rb') as f: 
+            with open(filename + '.pkl','rb') as f: 
                 self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req = pickle.load(f)
         else:
             '''[1] SBS/ UE distribution''' 
@@ -205,9 +206,10 @@ class BS(object):
             for u in range(self.U):
                 self.Req[u] = genUserRequest(self.userPreference[u])
             #check topoligy
-            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,None,None,self.Req,'84')
+            
+            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,None,None,self.Req,filename)
             # save Topology
-            with open('./CellFreeCLCA_RL/data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+'.pkl', 'wb') as f: 
+            with open(filename + '.pkl', 'wb') as f: 
                 pickle.dump([self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req], f)
             #self.EE_mean,self.EE_std,self.CS_mean,self.CS_std = self.get_statistic()
         
@@ -268,20 +270,22 @@ class BS(object):
                     competeUE.append(u) #the UE set in b-th cluster   
             clustering_policy_BS.append(competeUE)
         
-
+        
         '''[] optimal caching based on cluster top_N_idx '''
+        optCacheTopN = []
         for b in range (self.B):
             sumUserPreferenceInCluster = np.sum(self.userPreference[ clustering_policy_BS[b] ],axis=0)
             top_N_idx = sumUserPreferenceInCluster.argsort()[0:self.N]
-            self.optCacheTopN[b] = top_N_idx
+            optCacheTopN.append(top_N_idx)
 
         '''[] estimated caching based on cluster top_N_idx'''
+        estCacheTopN = []
         for b in range (self.B):
             sumUserPreferenceInCluster = np.sum(self.reqStatistic[ clustering_policy_BS[b] ],axis=0)
             top_N_idx = sumUserPreferenceInCluster.argsort()[0:self.N]
-            self.estCacheTopN[b] = top_N_idx
-        caching_policy_BS = self.optCacheTopN
+            estCacheTopN.append(top_N_idx)
 
+        caching_policy_BS = optCacheTopN
         return clustering_policy_UE,caching_policy_BS
 
     def updateReqStatistic(self):
@@ -481,16 +485,27 @@ if __name__ == "__main__":
     '''
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    # 
+    ''' nearestClustering_TopNCache '''
     nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache()
     nctc_EE, nctc_HR, RL_s_, done  = env.step(nearnest_clustering_policy_UE,topN_caching_policy_BS)
-    # BF
-    bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
-    
-    # Save the whole environment with Best Clustering and Best Caching
-    filenameBF = 'CellFreeCLCA_RL/data/Topology_bruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+'Result'
+    filenameBF = 'data/nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+'Result'
     with open(filenameBF+'.pkl', 'wb') as f:  
-        pickle.dump([self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
+        pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS], f)
+    # Load the whole environment with Best Clustering and Best Caching   
+    with open(filenameBF+'.pkl','rb') as f: 
+        bs_coordinate, u_coordinate , g, userPreference, Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS = pickle.load(f)
+    
+    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,nearnest_clustering_policy_UE,topN_caching_policy_BS,Req,filenameBF)
+    print('nctc_EE=',nctc_EE)
+    print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
+    print('topN_caching_policy_BS=',topN_caching_policy_BS)
+
+    ''' BF '''
+    bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
+    # Save the whole environment with Best Clustering and Best Caching
+    filenameBF = 'data/BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+'Result'
+    with open(filenameBF+'.pkl', 'wb') as f:  
+        pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
     # Load the whole environment with Best Clustering and Best Caching   
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
