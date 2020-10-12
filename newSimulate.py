@@ -11,6 +11,7 @@ from newDDPG import OrnsteinUhlenbeckProcess,AdaptiveParamNoiseSpec, ddpg_distan
 from newENV import BS
 from tqdm import tqdm
 from datetime import date
+today = date.today()
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 # make variable types for automatic setting to GPU or CPU, depending on GPU availability
 use_cuda = torch.cuda.is_available()
@@ -70,16 +71,17 @@ def plotMetricBF(poolEE,poolBestEE):
     fig.canvas.draw()
     plt.pause(0.001)
 if __name__ == '__main__':
-    # Load Optimal clustering and caching Policy
-    with open('CellFreeCLCA_RL/data/Topology_bruteForce_Result.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     # new ENV
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    # Load Optimal clustering and caching Policy
+    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
+    with open(filenameBF+'.pkl','rb') as f: 
+        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+    
     # While loop setup
     nGame = 1
     done = False
     poolMaxEE=[]
-    
     while(1):
         poolEE=[]
         poolHR=[]
@@ -94,23 +96,21 @@ if __name__ == '__main__':
         #Mddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
         RL_s = env.s2_
         for ep in tqdm(range(MAX_EPISODES)):
-            # get initial state
+            # Get initial state
             a_cl = Mddpg_cl.action(RL_s)# choose action [ env.U*env.B x 1 ]
-            #a_cl = a_cl.astype(int)
             a_ca = Mddpg_ca.action(RL_s)# choose action [ env.B*env.F x 1 ]
-            #a_ca = a_ca.astype(int)
-            
-            # convert action value to policy //Clustering Part
+
+            # Convert action value to policy //Clustering Part
             connectionScore = np.reshape(a_cl, (env.U,env.B) ) #[env.U x env.B]
             clustering_policy_UE = []
             for u in range(env.U): 
                 #print(connectionScore[u])
                 #print(connectionScore[u].argsort())
                 #print(connectionScore[u].argsort()[::-1][:maxLink])
-                bestBS = connectionScore[u].argsort()[::-1][:env.maxLink]
+                bestBS = connectionScore[u].argsort()[::-1][:env.L]
                 clustering_policy_UE.append(bestBS)
             
-            # convert action value to policy //Caching Part
+            # Convert action value to policy //Caching Part
             cacheScore = np.reshape(a_ca,(env.B,env.F) )
             caching_policy_BS = []
             for b in range(env.B):
@@ -149,8 +149,8 @@ if __name__ == '__main__':
 
         
     # save actor parameter
-    today = date.today()
-    path = "CellFreeCLCA_RL/data/"
+    
+    path = "data/"
     filenameDDPG_CL = path + "DDPG_CL" + str(today) + '.pt'
     filenameDDPG_CA = path + "DDPG_CA" + str(today) + '.pt'
     torch.save(Mddpg_cl.actor, filenameDDPG_CL)
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     plt.grid()
     plt.legend()
     fig = plt.gcf()
-    filename = 'CellFreeCLCA_RL/data/BF_vs_RL'+str(MAX_EPISODES)+'_'+str(today)
+    filename = 'data/BF_vs_RL'+str(MAX_EPISODES)+'_'+str(today)
     fig.savefig(filename + '.eps', format='eps',dpi=1200)
     fig.savefig(filename + '.png', format='png',dpi=1200)
     fig.show()

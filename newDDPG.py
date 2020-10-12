@@ -31,6 +31,7 @@ n_realizations = 100
 n_LR_update = 1000
 MEM_SIZE = 60000
 SEED = 0 # random seed
+Var = 1 # control exploration
 #np.random.seed(SEED)
 #####################################
 
@@ -225,6 +226,7 @@ class DDPG:
         # noise
         self.noise = OrnsteinUhlenbeckProcess(mu = np.zeros(act_dim),dimension = act_dim, num_steps = NUM_EPISODES) # OU noise
         self.noise.reset() # reset actor OU noise
+        self.Var = Var
     
     def action(self, s): # choose action
         obs = torch.from_numpy(s).unsqueeze(0)
@@ -234,16 +236,12 @@ class DDPG:
         a = self.actor(inp).data[0].cpu().numpy()### 
         self.actor.train()# switch to trainning mode
         # add action space noise
+        a = np.random.normal(a, self.Var)
+        '''
         self.noise.reset() # reset actor OU noise
         noise = self.noise.step()
         a += noise
-        #print('noise=',noise)
-        '''
-        if noise.any():
-            #a += noise # OU noise
-            a += self.noise.step()
-        '''
-            
+        ''' 
         # clipping --> around
         #a = np.around(np.clip(a, 0, 1))            
         return a
@@ -257,6 +255,7 @@ class DDPG:
         return random.sample(self.memory, batch_size)
 
     def train(self):
+        self.Var *= 0.9995
         training_data = np.array(self.sampleMemory(BATCH_SIZE))
         #batch_s,batch_a,batch_r,batch_s1= training_data
         batch_s,batch_a,batch_r,batch_s1=zip(*training_data)
@@ -295,58 +294,6 @@ class DDPG:
             parameter_target.data.copy_((1 - tau) * parameter_target.data + tau * parameter_source.data)
 
 if __name__ == "__main__":
-    def channel_reset(U,B,pl):
-        h = (np.sqrt(h_var/2)*(randn(1,U*B)+1j*randn(1,U*B))).reshape((U,B)) # h~CN(0,1); |h|~Rayleigh fading
-        G = pl*np.power(abs(h),2)    
-        '''[6] Received power of UE from BS'''
-        P = np.zeros((U,B))
-        P_bs = np.zeros((U,B))
-        P_bs[:,0]=P_MBS
-        P_bs[:,1:]=P_SBS
-        P = G*P_bs  
-        return P   
-    '''[1] SBS/ UE distribution'''  
-    u_coordinate = UE_SBS_location_distribution(lambda0 = lambda_u) # UE
-    U = len(u_coordinate)
-    #
-    B = num_bs+1    
-    bs_coordinate = np.array([ [ 0. ,  0.  ],
-                               [-0.2,  0.1],
-                               [ 0.3, -0.05 ],
-                               [0.2,  0.2]])
-    '''[2] Pair-wise distance'''
-    D = np.zeros((U,B))
-    for u in  range(U):
-        for b in range(B):
-            D[u][b] = 1000*np.sqrt(sum((u_coordinate[u]-bs_coordinate[b])**2)) # km -> m
-    
-    '''[3] Channel gain'''
-    pl = k*np.power(D, -alpha) # Path-loss
-    P = channel_reset(U,B,pl)
-
-    '''
-    xx_sbs, yy_sbs = UE_SBS_location_distribution(numbPoints = num_bs) # SBS
-    sbs_coordinate = np.concatenate((xx_sbs,yy_sbs),axis=1)
-    bs_coordinate = np.concatenate((np.array([[0,0]]), sbs_coordinate),axis=0) # MBS+SBS
-    B = len(bs_coordinate)
-    
-    U = num_u
-    u_coordinate = np.array([[ 0.14171213,  -0.1],
-                               [ 0.0137101 ,  0.05360341],
-                               [ 0.05249104,  0.19713417],
-                               [-0.15, -0.05],
-                               [-0.05418348, 0.15],
-                               [-0.25, 0.15],
-                               [0.3, -0.1],
-                               [ 0.22401997,  0.04174466],
-                               [ 0.22792172,  0.20416831],
-                               [ 0.03664668, -0.03173442]])
-    B = num_bs+1    
-    bs_coordinate = np.array([ [ 0. ,  0.  ],
-                               [-0.2,  0.1],
-                               [ 0.3, -0.05 ],
-                               [0.2,  0.2]])
-    '''
     ############################################
     #bs_coordinate,u_coordinate,B,U,P,up,EE_mean,EE_std,CS_mean,CS_std,pl = load_env_distribution()
     #env = BS(bs_coordinate,u_coordinate,B,U,P,up,REQUEST_DUPLICATE,False,EE_mean,EE_std,CS_mean,CS_std)

@@ -7,8 +7,9 @@ from itertools import combinations,permutations,product
 import matplotlib.pyplot as plt
 import multiprocessing
 from tqdm import tqdm
-from datetime import date
 import concurrent.futures
+from datetime import date
+today = date.today()
 #####################################
 num_cores = multiprocessing.cpu_count()
 # ENV Parameter
@@ -440,6 +441,8 @@ class BS(object):
         bestEE=0
         opt_clustering_policy_UE=[]
         opt_caching_policy_BS=[]
+
+        '''
         itr = 0
         for clustering_policy_UE in tqdm(universe_clustering_policy_UE):
             for caching_policy_BS in universe_caching_policy_BS:
@@ -450,7 +453,6 @@ class BS(object):
                     opt_clustering_policy_UE = clustering_policy_UE
                     opt_caching_policy_BS = caching_policy_BS
                 itr+=1
-        
         '''
         with concurrent.futures.ProcessPoolExecutor(max_workers= (num_cores-2) ) as executor:
             futures = []
@@ -463,7 +465,7 @@ class BS(object):
                     bestEE = subBestEE
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
-        '''
+        
 
         return self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS
 
@@ -477,39 +479,42 @@ class BS(object):
                 subOpt_caching_policy_BS = caching_policy_BS
         return subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS
 
-            
-
 if __name__ == "__main__":
-    '''
-    Find Best Clustering policy and Caching policy in EE aspect by Brute Force
-    '''
+    
+    # Build ENV
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    ''' nearestClustering_TopNCache '''
+    
+    # Derive Policy: nearestClustering_TopNCache
     nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache()
     nctc_EE, nctc_HR, RL_s_, done  = env.step(nearnest_clustering_policy_UE,topN_caching_policy_BS)
-    filenameBF = 'data/nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+'Result'
+    
+    # Save the whole environment
+    filenameBF = 'data/Result_nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
     with open(filenameBF+'.pkl', 'wb') as f:  
         pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS], f)
-    # Load the whole environment with Best Clustering and Best Caching   
+    # Load the whole environment
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS = pickle.load(f)
     
+    # Plot
     plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,nearnest_clustering_policy_UE,topN_caching_policy_BS,Req,filenameBF)
     print('nctc_EE=',nctc_EE)
     print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
     print('topN_caching_policy_BS=',topN_caching_policy_BS)
-
-    ''' BF '''
+    
+    # Derive Policy: BF
     bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
+    
     # Save the whole environment with Best Clustering and Best Caching
-    filenameBF = 'data/BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+'Result'
+    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
     with open(filenameBF+'.pkl', 'wb') as f:  
         pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
     # Load the whole environment with Best Clustering and Best Caching   
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     
+    # Plot
     plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,opt_clustering_policy_UE,opt_caching_policy_BS,Req,filenameBF)
     print('bestEE=',bestEE)
     print('opt_clustering_policy_UE=',opt_clustering_policy_UE)
