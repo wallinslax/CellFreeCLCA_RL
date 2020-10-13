@@ -200,6 +200,10 @@ class DDPG:
         self.memMaxSize = memMaxSize
         self.BATCH_SIZE = BATCH_SIZE
         
+        # Dimension
+        self.act_dim = act_dim
+        self.obs_dim = obs_dim
+
         # actor
         self.actor =           actor(input_size = obs_dim, output_size = act_dim).type(FloatTensor)
         self.actor_target =    actor(input_size = obs_dim, output_size = act_dim).type(FloatTensor)
@@ -227,6 +231,9 @@ class DDPG:
         self.noise = OrnsteinUhlenbeckProcess(mu = np.zeros(act_dim),dimension = act_dim, num_steps = NUM_EPISODES) # OU noise
         self.noise.reset() # reset actor OU noise
         self.Var = Var
+    def random_action(self):
+        action = np.random.uniform(-1.,1.,self.act_dim)
+        return action
     
     def action(self, s): # choose action
         obs = torch.from_numpy(s).unsqueeze(0)

@@ -247,13 +247,14 @@ class BS(object):
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-
-        self.s2_ = np.hstack([  self.g.real.flatten(),
+        '''
+        self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])      
+                                self.Req.flatten()]) 
+        '''     
         #print('lala')
     
     def nearestClustering_TopNCache(self):
@@ -403,22 +404,23 @@ class BS(object):
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
-        self.s_ = np.hstack([   self.SINR,
+        self.s_ = np.hstack([  self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-
-        self.s2_ = np.hstack([  self.g.real.flatten(),
+        '''
+        self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])    
+                                self.Req.flatten()])  
+        '''  
         
         '''[19] Whether episode done'''
 
 
-        return self.EE, self.Hit_rate, self.s2_, self.done
+        return self.EE, self.Hit_rate, self.s_, self.done
 
     def bruteForce(self):
         print("this is brute force for EE")

@@ -27,6 +27,7 @@ REQUEST_DUPLICATE = False
           
 MAX_EPISODES = 10**4
 MAX_EP_STEPS = 10**4
+warmup = 1000
 #####################################
 
 def plotMetric3(poolEE,poolHR,poolCS):
@@ -75,6 +76,7 @@ if __name__ == '__main__':
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     # Load Optimal clustering and caching Policy
     filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
+    filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-12'
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     
@@ -87,18 +89,24 @@ if __name__ == '__main__':
         poolHR=[]
         poolBestEE = []
         # new ACT 
-        obs_dim = len(env.s2_)
+        obs_dim = len(env.s_)
         cluster_act_dim = (env.U*env.B)
         cache_act_dim = (env.B*env.F)
         Mddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)
         Mddpg_ca = DDPG(obs_dim = obs_dim, act_dim = cache_act_dim)
         #Mddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
         #Mddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
-        RL_s = env.s2_
+
+        # Get initial state
+        RL_s = env.s_
         for ep in tqdm(range(MAX_EPISODES)):
-            # Get initial state
-            a_cl = Mddpg_cl.action(RL_s)# choose action [ env.U*env.B x 1 ]
-            a_ca = Mddpg_ca.action(RL_s)# choose action [ env.B*env.F x 1 ]
+
+            if ep <= warmup:
+                a_cl = Mddpg_cl.random_action()
+                a_ca = Mddpg_ca.random_action()
+            else:
+                a_cl = Mddpg_cl.action(RL_s)# choose action [ env.U*env.B x 1 ]
+                a_ca = Mddpg_ca.action(RL_s)# choose action [ env.B*env.F x 1 ]
 
             # Convert action value to policy //Clustering Part
             connectionScore = np.reshape(a_cl, (env.U,env.B) ) #[env.U x env.B]
@@ -106,7 +114,7 @@ if __name__ == '__main__':
             for u in range(env.U): 
                 #print(connectionScore[u])
                 #print(connectionScore[u].argsort())
-                #print(connectionScore[u].argsort()[::-1][:maxLink])
+                #print(connectionScore[u].argsort()[::-1][:env.L])
                 bestBS = connectionScore[u].argsort()[::-1][:env.L]
                 clustering_policy_UE.append(bestBS)
             
@@ -141,7 +149,7 @@ if __name__ == '__main__':
         maxEE = max(poolEE)
         poolMaxEE.append(maxEE)
         #maxEE = bestEE
-        if maxEE > bestEE/2: 
+        if maxEE > bestEE/3: 
             break
         else:
             print(nGame, 'th game failed with maxEE: ',maxEE)
@@ -163,7 +171,7 @@ if __name__ == '__main__':
     plt.plot(range(len(poolBestEE)),poolBestEE,'r^-',label='EE of Brute Force')
     titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
                                     ',nUE='+str(env.U)+\
-                                    ',nMaxLink='+str(env.maxLink)+\
+                                    ',nMaxLink='+str(env.L)+\
                                     ',nFile='+str(env.F)+\
                                     ',nMaxCache='+str(env.N)
     plt.title(titleNmae) # title
@@ -178,5 +186,5 @@ if __name__ == '__main__':
     fig.savefig(filename + '.png', format='png',dpi=1200)
     fig.show()
     # plot Hit Rate------------------------------------------------------------------
-    plt.cla()
-    plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
+    # plt.cla()
+    # plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
