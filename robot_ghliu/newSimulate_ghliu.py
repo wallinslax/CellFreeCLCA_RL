@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Proprietary Design
-import robot_ghliu
-from newDDPG import OrnsteinUhlenbeckProcess,AdaptiveParamNoiseSpec, ddpg_distance_metric, hard_update, critic, actor, DDPG
+import DDPG
+# from newDDPG import OrnsteinUhlenbeckProcess,AdaptiveParamNoiseSpec, ddpg_distance_metric, hard_update, critic, actor, DDPG
 from newENV import BS
 # Public Lib
 from torch.autograd import Variable
@@ -68,6 +68,9 @@ def plotMetricBF(poolEE,poolBestEE):
     fig.show()
     fig.canvas.draw()
     plt.pause(0.001)
+
+def train_1Robot():
+def train_2Robots():
 if __name__ == '__main__':
     # new ENV
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
@@ -89,6 +92,7 @@ if __name__ == '__main__':
         obs_dim = len(env.s_)
         cluster_act_dim = (env.U*env.B)
         cache_act_dim = (env.B*env.F)
+        Mddpg_cl = DDPG(obs_dim, cluster_act_dim, args)
         Mddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)###
         Mddpg_ca = DDPG(obs_dim = obs_dim, act_dim = cache_act_dim)###
         #Mddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')

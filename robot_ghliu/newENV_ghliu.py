@@ -258,8 +258,8 @@ class BS(object):
                                 self.Req.flatten()]) 
         '''     
         #print('lala')
-   
-    def reset(self):  
+    
+    def reset(self):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
@@ -268,7 +268,7 @@ class BS(object):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
         return self.s_
-    
+
     def nearestClustering_TopNCache(self):
         g_abs = abs(self.g)
         print(g_abs)

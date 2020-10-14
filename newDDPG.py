@@ -1,18 +1,23 @@
+# proprietary design 
+from toolUtil import *
+from newENV import BS
+# Public Lib
 import matplotlib.pyplot as plt
 import numpy as np
-import random
-import torch.nn.functional as F
 from numpy.random import randn
+import random
 #environment
 #from newENV import BS,plot_UE_SBS_association,UE_SBS_location_distribution,plot_UE_SBS_distribution
 import os
 import time
-#pytorch
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
 from math import sqrt
 import copy
+#pytorch
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+
 #####################  hyper parameters  ####################
 # DDPG Parameter
 RESET_CHANNEL = False
@@ -240,10 +245,11 @@ class DDPG:
         inp = Variable(obs,requires_grad=False).type(FloatTensor)
 
         self.actor.eval()# switch to evaluation mode
-        a = self.actor(inp).data[0].cpu().numpy()### 
+        action = self.actor(inp).data[0].cpu().numpy()### .
         self.actor.train()# switch to trainning mode
+        
         # add action space noise
-        a = np.random.normal(a, self.Var)
+        action = np.random.normal(action, self.Var)
         '''
         self.noise.reset() # reset actor OU noise
         noise = self.noise.step()
@@ -251,7 +257,7 @@ class DDPG:
         ''' 
         # clipping --> around
         #a = np.around(np.clip(a, 0, 1))            
-        return a
+        return action
 
     def addMemory(self, ep):
         self.memory.append(ep)
@@ -301,78 +307,10 @@ class DDPG:
             parameter_target.data.copy_((1 - tau) * parameter_target.data + tau * parameter_source.data)
 
 if __name__ == "__main__":
-    ############################################
-    #bs_coordinate,u_coordinate,B,U,P,up,EE_mean,EE_std,CS_mean,CS_std,pl = load_env_distribution()
-    #env = BS(bs_coordinate,u_coordinate,B,U,P,up,REQUEST_DUPLICATE,False,EE_mean,EE_std,CS_mean,CS_std)
-    env1 = BS(bs_coordinate,u_coordinate,B,U,P)
-    obs_dim = len(env.SINR)+len(env.s_)+len(env.Prof_state)
-    act_dim = (env.U*env.B)+(env.B*env.F)
-    ddpg1 = DDPG(obs_dim = obs_dim, act_dim = act_dim)
-    memory1 = Replay(env=env,maxlen=MEM_SIZE)
-    memory1.initialize(init_length= 150)
-    param_noise = AdaptiveParamNoiseSpec(initial_stddev=0.05,desired_action_stddev=0.3, adaptation_coefficient=1.05)
-    step = 0
-    for i in range(1):
-        '''
-        [1]multi DDPG + parameter noise ->3*DDPG
-        [2]multi DDPG ->3*DDPG
-        [3]single DDPG ->1*DDPG
-        [4]Popular cache & RL clustering
-        [5]Popular cache & random clustering
-        '''
-        total_reward = [0, 0, 0, 0, 0, 0,0,0,0]
-        step_counter = [0, 0, 0, 0, 0, 0,0,0,0] # distributor agent's episode length (related to convergence rate)
-        done = [0, 0, 0, 0, 0, 0,0,0,0]
-        total_ee = [0, 0, 0, 0, 0, 0,0,0,0]
-        total_cs = [0, 0, 0, 0, 0, 0,0,0,0]
-        total_hit = [0, 0, 0, 0, 0, 0,0,0,0]
-        total_itf = [0, 0, 0, 0, 0, 0,0,0,0]
-        
-        
-        noise_counter = 0 # G: sum of N running agents' episode length
-        
-        # get initial state
-        RL1_s = env1.reset() 
-        
-        
-        # add parameter noise onto N running agents. 
-        ddpg1.perturb_actor_parameters(param_noise) 
-        
-        
-        for j in range(10):
-            
-            ddpg1.noise.reset() # reset actor OU noise
-            RL1_a = ddpg1.action(RL1_s, ddpg1.noise.step(), param_noise).astype(int)# choose action
-            RL1_clustering_policy_num,RL1_caching_policy_num = env1.action_vec_2_num(RL1_a)
-            RL1_r, done[0], RL1_EE, RL1_CS, RL1_SINR, RL1_Hit_rate, RL1_s_, RL1_Itf = env1.step(clustering_policy_num = RL1_clustering_policy_num,
-                                                                                       caching_policy_num = RL1_caching_policy_num, 
-                                                                                       update_Req = 1, 
-                                                                                       normalize = 1)
-            memory1.add((RL1_s,RL1_a,RL1_r,RL1_s_))
-            total_reward[0] += RL1_r
-            total_ee[0] += RL1_EE
-            total_cs[0] += RL1_CS
-            total_hit[0] += RL1_Hit_rate
-            total_itf[0] += RL1_Itf
-            step_counter[0] += 1
-            training_data1 = np.array(memory1.sample(BATCH_SIZE))
-            ddpg1.train(training_data1)
-            noise_counter += 1
-            RL1_s = RL1_s 
-   
-    myddpg_1 =  ddpg1
-    # calculate ddpg_distance_metric and update parameter noise
-    if memory1.position-noise_counter > 0:
-        noise_data=memory1.data[memory1.position-noise_counter:memory1.position]
-    else:
-        noise_data=memory1.data[memory1.position-noise_counter+MEM_SIZE:MEM_SIZE] \
-        + memory1.data[0:memory1.position]   
-    noise_data=np.array(noise_data)
-    noise_s, noise_a, _,_ = zip(*noise_data)
-    perturbed_actions = noise_a### this one is strange
-    noise_s = np.array(noise_s)
-    unperturbed_actions = myddpg_1.action(noise_s, None, None).astype(int)### noise_counter != 300
-    ddpg_dist = ddpg_distance_metric(perturbed_actions, unperturbed_actions)
-    param_noise.adapt(ddpg_dist) # update parameter noise
-    
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    obs_dim = len(env.s_)
+    cluster_act_dim = (env.U*env.B)
+    RL_s = env.s_
+    Mddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)
+    a_cl = Mddpg_cl.action(RL_s)
         
