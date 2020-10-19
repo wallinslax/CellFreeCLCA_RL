@@ -200,10 +200,11 @@ class DDPG:
         self.critic_lr = LR_C
 
         #Memory
-        self.memory=[]
-        self.position=0
         self.memMaxSize = memMaxSize
         self.BATCH_SIZE = BATCH_SIZE
+        self.memory = [] #zeros(self.memMaxSize)
+        self.position=0
+        self.memorySize=0
         
         # Dimension
         self.act_dim = act_dim
@@ -260,9 +261,18 @@ class DDPG:
         return action
 
     def addMemory(self, ep):
-        self.memory.append(ep)
-        self.position = (self.position + 1) % self.memMaxSize       
-        #self.memory[self.position] = tuple(ep)
+        if self.memorySize < self.memMaxSize:
+            self.memory.append(ep)
+            self.memorySize+=1 
+        else:
+            self.memory[self.position] = ep
+        self.position = (self.position + 1) % self.memMaxSize 
+
+        '''
+        self.memory[self.position] = ep   
+        self.position = (self.position + 1) % self.memMaxSize 
+        self.memorySize+=1
+        '''
         
     def sampleMemory(self, batch_size):     
         return random.sample(self.memory, batch_size)
@@ -301,6 +311,8 @@ class DDPG:
         # sychronize target network with fast moving one
         self.weightSync(self.critic_target, self.critic)
         self.weightSync(self.actor_target, self.actor)
+
+        return loss_actor, loss_critic
 
     def weightSync(self,target_model, source_model, tau = 0.001): # Update the target networks (soft update)
         for parameter_target, parameter_source in zip(target_model.parameters(), source_model.parameters()):

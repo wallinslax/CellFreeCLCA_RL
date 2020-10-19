@@ -7,11 +7,11 @@ import torch.nn.functional as F
 import numpy as np
 import gym
 import time
-
+import matplotlib.pyplot as plt
 
 #####################  hyper parameters  ####################
 
-MAX_EPISODES = 2000
+MAX_EPISODES = 100
 MAX_EP_STEPS = 200
 LR_A = 0.001    # learning rate for actor
 LR_C = 0.002    # learning rate for critic
@@ -141,6 +141,8 @@ class DDPG(object):
         self.ctrain.zero_grad()
         td_error.backward()
         self.ctrain.step()
+        loss_c = td_error
+        return loss_a, loss_c
 
     def store_transition(self, s, a, r, s_):
         transition = np.hstack((s, a, [r], s_))
@@ -163,6 +165,8 @@ ddpg = DDPG(a_dim, s_dim, a_bound)
 var = 3  # control exploration
 t1 = time.time()
 flag_render = False
+poolLossActor=[]
+poolLossCritic=[]
 for i in range(MAX_EPISODES):
     s = env.reset()
     ep_reward = 0
@@ -179,7 +183,9 @@ for i in range(MAX_EPISODES):
 
         if ddpg.pointer > MEMORY_CAPACITY:
             var *= .9995    # decay the action randomness
-            ddpg.learn()
+            loss_a, loss_c = ddpg.learn()
+            poolLossActor.append(loss_a)
+            poolLossCritic.append(loss_c)
             
         s = s_
         ep_reward += r
@@ -187,7 +193,26 @@ for i in range(MAX_EPISODES):
         if j == MAX_EP_STEPS-1:
             #print('Episode:', i, ' Reward: %i' % int(ep_reward), 'Explore: %.2f' % var, )
             print('Episode:{} Reward:{} Explore:{}'.format(i,ep_reward,var))
+            
             if ep_reward>-300:
                 flag_render = True
             break
+    
 print('Running time: ', time.time() - t1)
+
+# plot Brute Force V.S. RL------------------------------------------------------------------
+plt.cla()
+plt.plot(range(len(poolLossActor)),poolLossActor,'r-',label='Loss of actor')
+plt.plot(range(len(poolLossCritic)),poolLossCritic,'c-',label='Loss of critic')
+
+plt.title('Loss of DDPG') # title
+plt.ylabel("Bits/J") # y label
+plt.xlabel("Iteration") # x label
+#plt.xlim([0, len(poolEE)])
+plt.grid()
+plt.legend()
+fig = plt.gcf()
+filename = 'data/DDPG_of_pytorch_'+ENV_NAME
+fig.savefig(filename + '.eps', format='eps',dpi=1200)
+fig.savefig(filename + '.png', format='png',dpi=1200)
+fig.show()

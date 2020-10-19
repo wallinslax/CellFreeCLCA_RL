@@ -68,15 +68,16 @@ def plotMetricBF(poolEE,poolBestEE):
     fig.show()
     fig.canvas.draw()
     plt.pause(0.001)
-if __name__ == '__main__':
-    # new ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    # Load Optimal clustering and caching Policy
-    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
-    filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-12'
-    with open(filenameBF+'.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-    
+
+def train_1act(env, bestEE=0, bestHR=0):
+    Addpg = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim+cache_act_dim) 
+    a_all = Addpg.random_action()
+    a_all = Addpg.action(RL_s)
+    a_cl = a_all[0:cluster_act_dim]
+    a_ca = a_all[cluster_act_dim:]
+
+
+def train_2act(env, bestEE=0, bestHR=0):
     # While loop setup
     nGame = 1
     done = False
@@ -85,10 +86,13 @@ if __name__ == '__main__':
         poolEE=[]
         poolHR=[]
         poolBestEE = []
+        poolLossActorCL = []
+        poolLossCriticCL = []
         # new ACT 
         obs_dim = len(env.s_)
         cluster_act_dim = (env.U*env.B)
         cache_act_dim = (env.B*env.F)
+        
         Mddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)###
         Mddpg_ca = DDPG(obs_dim = obs_dim, act_dim = cache_act_dim)###
         #Mddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
@@ -97,7 +101,6 @@ if __name__ == '__main__':
         # Get initial state
         RL_s = env.s_
         for ep in tqdm(range(MAX_EPISODES)):
-
             if ep <= warmup:
                 a_cl = Mddpg_cl.random_action()
                 a_ca = Mddpg_ca.random_action()
@@ -116,12 +119,12 @@ if __name__ == '__main__':
                 clustering_policy_UE.append(bestBS)
             
             # Convert action value to policy //Caching Part
-            cacheScore = np.reshape(a_ca,(env.B,env.F) )
+            cacheScore = np.reshape(a_ca, (env.B,env.F) )
             caching_policy_BS = []
             for b in range(env.B):
                 top_N_idx = np.sort(cacheScore[b].argsort()[-env.N:])# pick up N file with highest score, N is capacity of BSs
                 caching_policy_BS.append(top_N_idx)
-            
+            # take action to ENV
             EE, HR, RL_s_, done  = env.step(clustering_policy_UE,caching_policy_BS)
             poolEE.append(EE)
             poolHR.append(HR)
@@ -140,8 +143,10 @@ if __name__ == '__main__':
             RL_s = RL_s_
             
             if len(Mddpg_cl.memory) > Mddpg_cl.BATCH_SIZE:
-                Mddpg_cl.train()
-                Mddpg_ca.train()
+                lossActorCL, lossCriticCL = Mddpg_cl.train()
+                poolLossActorCL.append(lossActorCL)
+                poolLossCriticCL.append(lossCriticCL)
+                lossActorCA, lossCriticCA = Mddpg_ca.train()
         
         maxEE = max(poolEE)
         poolMaxEE.append(maxEE)
@@ -164,8 +169,10 @@ if __name__ == '__main__':
     Mddpg_ca.actor = torch.load(filenameDDPG_CA)
     # plot Brute Force V.S. RL------------------------------------------------------------------
     plt.cla()
-    plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
-    plt.plot(range(len(poolBestEE)),poolBestEE,'r^-',label='EE of Brute Force')
+    plt.plot(range(len(poolEE)),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
+    plt.plot(range(len(poolBestEE)),poolBestEE,'k-',label='EE of Brute Force')
+    plt.plot(range(len(poolLossActorCL)),poolLossActorCL,'r-',label='Loss of actorCL')
+    plt.plot(range(len(poolLossCriticCL)),poolLossCriticCL,'c-',label='Loss of criticCL')
     titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
                                     ',nUE='+str(env.U)+\
                                     ',nMaxLink='+str(env.L)+\
@@ -185,3 +192,14 @@ if __name__ == '__main__':
     # plot Hit Rate------------------------------------------------------------------
     # plt.cla()
     # plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
+
+if __name__ == '__main__':
+    # new ENV
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    # Load Optimal clustering and caching Policy
+    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
+    filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-12'
+    with open(filenameBF+'.pkl','rb') as f: 
+        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+    
+    train_2act(env, bestEE)
