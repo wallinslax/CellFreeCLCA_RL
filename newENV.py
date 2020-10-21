@@ -7,6 +7,8 @@ from random import randint
 import os,math,random,scipy.stats,itertools,csv,pickle,inspect
 from itertools import combinations,permutations,product
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+from matplotlib.pyplot import cm
 import multiprocessing
 from tqdm import tqdm
 import concurrent.futures
@@ -57,7 +59,6 @@ def UE_SBS_location_distribution(lambda0): #PPP
 
 def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,clustering_policy_UE,caching_policy_BS,Req,filename):
     plt.cla()
-    color =np.array( ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w','blue', 'red', 'fuchsia','peachpuff','pink'])
     # AP
     xx_bs = bs_coordinate[:,0]
     yy_bs = bs_coordinate[:,1]
@@ -80,7 +81,10 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,clustering_policy_U
         u = u+1
     '''
     #cluster plot
-    for u in range(len(u_coordinate)):
+    #color =np.array( ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'fuchsia','peachpuff','pink'])
+    nUE=len(u_coordinate)
+    color=cm.rainbow(np.linspace(0,1,nUE))
+    for u in range(nUE):
         xx_u = u_coordinate[u,0]
         yy_u = u_coordinate[u,1]
         plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u))
@@ -311,7 +315,29 @@ class BS(object):
         self.reqStatistic_norm = self.reqStatistic/(LA.norm(self.reqStatistic, axis=1)).reshape((self.U,1))
         self.ueSimilarity = np.matmul(self.reqStatistic_norm, self.reqStatistic_norm.T) 
 
-    def step(self,clustering_policy_UE,caching_policy_BS):
+    def step(self,action):
+        dimActCL = env.U*env.B
+        dimActCA = env.B,env.F
+        a_cl = action[0:dimActCL]
+        a_ca = action[dimActCA:]
+
+        # Convert action value to policy //Clustering Part
+        connectionScore = np.reshape(a_cl, (env.U,env.B) ) #[env.U x env.B]
+        clustering_policy_UE = []
+        for u in range(env.U): 
+            #print(connectionScore[u])
+            #print(connectionScore[u].argsort())
+            #print(connectionScore[u].argsort()[::-1][:env.L])
+            bestBS = connectionScore[u].argsort()[::-1][:env.L]
+            clustering_policy_UE.append(bestBS)
+        
+        # Convert action value to policy //Caching Part
+        cacheScore = np.reshape(a_ca, (env.B,env.F) )
+        caching_policy_BS = []
+        for b in range(env.B):
+            top_N_idx = np.sort(cacheScore[b].argsort()[-env.N:])# pick up N file with highest score, N is capacity of BSs
+            caching_policy_BS.append(top_N_idx)
+        
         '''[1] clustering_policy_BS'''
         self.cluster_size = []
         self.clustering_policy_BS = []
@@ -496,8 +522,9 @@ class BS(object):
 if __name__ == "__main__":
     
     # Build ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=2,loadENV = True)
     #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     
     # Derive Policy: nearestClustering_TopNCache
     nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache()

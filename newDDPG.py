@@ -158,7 +158,9 @@ class actor(nn.Module):
         x = F.relu(x)
 
         x = self.fc3(x)
-        action = F.relu(x)
+        #action = F.relu(x)
+        #action = F.tanh(x)
+        action = F.softmax(x)
         '''
         x = F.relu(self.ln1(self.bn1(self.fc1(state))))###
         x = F.relu(self.ln2(self.bn2(self.fc2(x))))
@@ -193,7 +195,6 @@ class critic(nn.Module):
 
 class DDPG:
     def __init__(self, obs_dim, act_dim, critic_lr = LR_C, actor_lr = LR_A, gamma = GAMMA, batch_size = BATCH_SIZE, memMaxSize = 60000):
-        
         self.gamma = GAMMA
         self.batch_size = BATCH_SIZE
         self.actor_lr = LR_A
@@ -237,6 +238,7 @@ class DDPG:
         self.noise = OrnsteinUhlenbeckProcess(mu = np.zeros(act_dim),dimension = act_dim, num_steps = NUM_EPISODES) # OU noise
         self.noise.reset() # reset actor OU noise
         self.Var = Var
+    
     def random_action(self):
         action = np.random.uniform(-1.,1.,self.act_dim)
         return action
@@ -319,7 +321,8 @@ class DDPG:
             parameter_target.data.copy_((1 - tau) * parameter_target.data + tau * parameter_source.data)
 
 if __name__ == "__main__":
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=2,loadENV = True)
     obs_dim = len(env.s_)
     cluster_act_dim = (env.U*env.B)
     RL_s = env.s_
