@@ -128,8 +128,8 @@ class actor(nn.Module):
 
         self.state_dim = input_size
         self.action_dim = output_size
-        self.h1_dim = 300###
-        self.h2_dim = 300
+        self.h1_dim = 2*input_size###
+        self.h2_dim = 2*input_size
 
         self.fc1 = nn.Linear(self.state_dim, self.h1_dim)
         torch.nn.init.xavier_uniform_(self.fc1.weight)
@@ -159,8 +159,9 @@ class actor(nn.Module):
 
         x = self.fc3(x)
         #action = F.relu(x)
-        #action = F.tanh(x)
-        action = F.softmax(x)
+        action = F.tanh(x)
+        #action = F.softmax(x)
+        #action = F.sigmoid(x)
         '''
         x = F.relu(self.ln1(self.bn1(self.fc1(state))))###
         x = F.relu(self.ln2(self.bn2(self.fc2(x))))
@@ -240,10 +241,10 @@ class DDPG:
         self.Var = Var
     
     def random_action(self):
-        action = np.random.uniform(-1.,1.,self.act_dim)
+        action = np.random.uniform(-1.0,1.0,self.act_dim)
         return action
     
-    def action(self, s): # choose action
+    def action(self, s, noise = 0): # choose action
         obs = torch.from_numpy(s).unsqueeze(0)
         inp = Variable(obs,requires_grad=False).type(FloatTensor)
 
@@ -252,7 +253,8 @@ class DDPG:
         self.actor.train()# switch to trainning mode
         
         # add action space noise
-        action = np.random.normal(action, self.Var)
+        #action = np.random.normal(action, self.Var)
+        action += noise
         '''
         self.noise.reset() # reset actor OU noise
         noise = self.noise.step()

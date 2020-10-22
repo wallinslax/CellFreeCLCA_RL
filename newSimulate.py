@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # Proprietary Design
 import robot_ghliu
-from newDDPG import OrnsteinUhlenbeckProcess,AdaptiveParamNoiseSpec, ddpg_distance_metric, hard_update, critic, actor, DDPG
+from newDDPG import DDPG
 from newENV import BS
 # Public Lib
 from torch.autograd import Variable
@@ -72,12 +72,97 @@ def plotMetricBF(poolEE,poolBestEE):
 def train_1act(env, bestEE=0, bestHR=0):
     Addpg = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim+cache_act_dim) 
     a_all = Addpg.random_action()
-    a_all = Addpg.action(RL_s)
+    a_all = Addpg.action(observation)
     a_cl = a_all[0:cluster_act_dim]
     a_ca = a_all[cluster_act_dim:]
 
+def train_2act(env):
+    poolEE=[]
+    poolHR=[]
+    poolLossActorCL = []
+    poolLossCriticCL = []
+    # new ACT 
+    obs_dim = len(env.s_)
+    cluster_act_dim = (env.U*env.B)
+    cache_act_dim = (env.B*env.F)
+    Mddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)###
+    Mddpg_ca = DDPG(obs_dim = obs_dim, act_dim = cache_act_dim)###
+    #Mddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
+    #Mddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
 
-def train_2act(env, bestEE=0, bestHR=0):
+    # Get initial state
+    obs = env.reset()
+    for ep in tqdm(range(MAX_EPISODES)):
+        if ep <= warmup:
+            a_cl = Mddpg_cl.random_action()
+            a_ca = Mddpg_ca.random_action()
+        else:  
+            mu, sigma = 0,1
+            noise = np.random.normal(mu, sigma,size=cluster_act_dim)
+            a_cl = Mddpg_cl.action(obs,noise)# choose action [ env.U*env.B x 1 ]
+            noise = np.random.normal(mu, sigma,size=cache_act_dim)
+            a_ca = Mddpg_ca.action(obs,noise)# choose action [ env.B*env.F x 1 ]
+            '''
+            a_cl = Mddpg_cl.action(obs)
+            a_ca = Mddpg_ca.action(obs)
+            '''
+        action = np.concatenate((a_cl, a_ca), axis=0)
+        # take action to ENV
+        obs2, reward, done, info = env.step(action)
+        EE = reward
+        HR = info
+        poolEE.append(EE)
+        
+        # RL update
+        r_cl = EE
+        r_ca = EE
+        Mddpg_cl.addMemory([obs,a_cl,r_cl,obs2])
+        Mddpg_ca.addMemory([obs,a_ca,r_ca,obs2])
+        obs = obs2
+        
+        if len(Mddpg_cl.memory) > Mddpg_cl.BATCH_SIZE:
+            lossActorCL, lossCriticCL = Mddpg_cl.train()
+            poolLossActorCL.append(lossActorCL)
+            poolLossCriticCL.append(lossCriticCL)
+            lossActorCA, lossCriticCA = Mddpg_ca.train()
+        
+
+    # save actor parameter
+    path = "data/"
+    filenameDDPG_CL = path + "DDPG_CL_Model_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
+    filenameDDPG_CA = path + "DDPG_CA_Model_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
+    torch.save(Mddpg_cl.actor, filenameDDPG_CL)
+    torch.save(Mddpg_ca.actor, filenameDDPG_CA)
+    Mddpg_cl.actor = torch.load(filenameDDPG_CL)
+    Mddpg_ca.actor = torch.load(filenameDDPG_CA)
+    # plot Brute Force V.S. RL------------------------------------------------------------------
+    plt.cla()
+    nXpt=len(poolEE)
+    plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
+    plt.plot(range(len(poolLossActorCL)),poolLossActorCL,'r-',label='Loss of actorCL')
+    plt.plot(range(len(poolLossCriticCL)),poolLossCriticCL,'c-',label='Loss of criticCL')
+    titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
+                                    ',nUE='+str(env.U)+\
+                                    ',nMaxLink='+str(env.L)+\
+                                    ',nFile='+str(env.F)+\
+                                    ',nMaxCache='+str(env.N)
+    plt.title(titleNmae) # title
+    plt.ylabel("Bits/J") # y label
+    plt.xlabel("Iteration") # x label
+    #plt.xlim([0, len(poolEE)])
+    plt.grid()
+    plt.legend()
+    fig = plt.gcf()
+    #filename = 'data/BF_vs_RL'+str(MAX_EPISODES)+'_'+str(today)
+    filename = 'data/2DDPG'+ str(env.B)+'AP_'+str(env.U)+'UE_' + str(MAX_EPISODES)+'_'+str(today)
+    fig.savefig(filename + '.eps', format='eps',dpi=1200)
+    fig.savefig(filename + '.png', format='png',dpi=1200)
+    fig.show()
+    # plot Hit Rate------------------------------------------------------------------
+    # plt.cla()
+    # plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
+
+def train_2actBF(env, bestEE=0, bestHR=0):
     # While loop setup
     nGame = 1
     done = False
@@ -98,20 +183,27 @@ def train_2act(env, bestEE=0, bestHR=0):
         #Mddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
 
         # Get initial state
-        RL_s = env.s_
+        obs = env.reset()
         for ep in tqdm(range(MAX_EPISODES)):
             if ep <= warmup:
                 a_cl = Mddpg_cl.random_action()
                 a_ca = Mddpg_ca.random_action()
-            else:
-                a_cl = Mddpg_cl.action(RL_s)# choose action [ env.U*env.B x 1 ]
-                a_ca = Mddpg_ca.action(RL_s)# choose action [ env.B*env.F x 1 ]
-
-            
+            else:  
+                mu, sigma = 0,1
+                noise = np.random.normal(mu, sigma,size=cluster_act_dim)
+                a_cl = Mddpg_cl.action(obs,noise)# choose action [ env.U*env.B x 1 ]
+                noise = np.random.normal(mu, sigma,size=cache_act_dim)
+                a_ca = Mddpg_ca.action(obs,noise)# choose action [ env.B*env.F x 1 ]
+                '''
+                a_cl = Mddpg_cl.action(obs)
+                a_ca = Mddpg_ca.action(obs)
+                '''
+            action = np.concatenate((a_cl, a_ca), axis=0)
             # take action to ENV
-            EE, HR, RL_s_, done  = env.step(clustering_policy_UE,caching_policy_BS)
+            obs2, reward, done, info = env.step(action)
+            EE = reward
+            HR = info
             poolEE.append(EE)
-            poolHR.append(HR)
             #plotMetricBF(poolEE,poolBestEE)
             #plotMetric3(poolEE,poolHR,poolCS)
             #with np.printoptions(precision=3, suppress=True):                                                     
@@ -119,10 +211,10 @@ def train_2act(env, bestEE=0, bestHR=0):
             
             # RL update
             r_cl = EE
-            r_ca = HR
-            Mddpg_cl.addMemory([RL_s,a_cl,r_cl,RL_s_])
-            Mddpg_ca.addMemory([RL_s,a_ca,r_ca,RL_s_])
-            RL_s = RL_s_
+            r_ca = EE
+            Mddpg_cl.addMemory([obs,a_cl,r_cl,obs2])
+            Mddpg_ca.addMemory([obs,a_ca,r_ca,obs2])
+            obs = obs2
             
             if len(Mddpg_cl.memory) > Mddpg_cl.BATCH_SIZE:
                 lossActorCL, lossCriticCL = Mddpg_cl.train()
@@ -139,12 +231,10 @@ def train_2act(env, bestEE=0, bestHR=0):
             print(nGame, 'th game failed with maxEE: ',maxEE)
             nGame += 1
 
-        
     # save actor parameter
-    
     path = "data/"
-    filenameDDPG_CL = path + "DDPG_CL" + str(today) + '.pt'
-    filenameDDPG_CA = path + "DDPG_CA" + str(today) + '.pt'
+    filenameDDPG_CL = path + "DDPG_CL_Model_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
+    filenameDDPG_CA = path + "DDPG_CA_Model_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
     torch.save(Mddpg_cl.actor, filenameDDPG_CL)
     torch.save(Mddpg_ca.actor, filenameDDPG_CA)
     Mddpg_cl.actor = torch.load(filenameDDPG_CL)
@@ -175,7 +265,8 @@ def train_2act(env, bestEE=0, bestHR=0):
     plt.grid()
     plt.legend()
     fig = plt.gcf()
-    filename = 'data/BF_vs_RL'+str(MAX_EPISODES)+'_'+str(today)
+    #filename = 'data/BF_vs_RL'+str(MAX_EPISODES)+'_'+str(today)
+    filename = 'data/2DDPG'+ str(env.B)+'AP_'+str(env.U)+'UE_' + str(MAX_EPISODES)+'_'+str(today)
     fig.savefig(filename + '.eps', format='eps',dpi=1200)
     fig.savefig(filename + '.png', format='png',dpi=1200)
     fig.show()

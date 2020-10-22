@@ -1,4 +1,3 @@
-
 # Public Lib
 import numpy as np
 from numpy import linalg as LA
@@ -264,6 +263,7 @@ class BS(object):
         #print('lala')
    
     def reset(self):  
+        self.SINR = np.zeros(self.U)
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
@@ -316,26 +316,29 @@ class BS(object):
         self.ueSimilarity = np.matmul(self.reqStatistic_norm, self.reqStatistic_norm.T) 
 
     def step(self,action):
-        dimActCL = env.U*env.B
-        dimActCA = env.B,env.F
+        dimActCL = self.U*self.B
+        dimActCA = self.B*self.F
+        
         a_cl = action[0:dimActCL]
-        a_ca = action[dimActCA:]
+        a_ca = action[-dimActCA:]
 
         # Convert action value to policy //Clustering Part
-        connectionScore = np.reshape(a_cl, (env.U,env.B) ) #[env.U x env.B]
+        connectionScore = np.reshape(a_cl, (self.U,self.B) ) #[env.U x env.B]
+        #connectionScore = np.around(connectionScore)
         clustering_policy_UE = []
-        for u in range(env.U): 
+        for u in range(self.U): 
             #print(connectionScore[u])
             #print(connectionScore[u].argsort())
-            #print(connectionScore[u].argsort()[::-1][:env.L])
-            bestBS = connectionScore[u].argsort()[::-1][:env.L]
-            clustering_policy_UE.append(bestBS)
+            #print(connectionScore[u].argsort()[::-1][:self.L])
+            bestLBS = connectionScore[u].argsort()[::-1][:self.L]
+            selectedBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
+            clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
-        cacheScore = np.reshape(a_ca, (env.B,env.F) )
+        cacheScore = np.reshape(a_ca, (self.B,self.F) )
         caching_policy_BS = []
-        for b in range(env.B):
-            top_N_idx = np.sort(cacheScore[b].argsort()[-env.N:])# pick up N file with highest score, N is capacity of BSs
+        for b in range(self.B):
+            top_N_idx = np.sort(cacheScore[b].argsort()[-self.N:])# pick up N file with highest score, N is capacity of BSs
             caching_policy_BS.append(top_N_idx)
         
         '''[1] clustering_policy_BS'''
@@ -456,9 +459,13 @@ class BS(object):
         '''  
         
         '''[19] Whether episode done'''
+        observation = self.s_
+        reward = self.EE
+        done = self.done
+        info = self.Hit_rate
 
-
-        return self.EE, self.Hit_rate, self.s_, self.done
+        #return self.EE, self.Hit_rate, self.s_, self.done
+        return observation, reward, done, info
 
     def bruteForce(self):
         print("this is brute force for EE")
@@ -525,11 +532,15 @@ if __name__ == "__main__":
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=2,loadENV = True)
     #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    
+
+
+
+    #------------------------------------------------------------------------------------------------
     # Derive Policy: nearestClustering_TopNCache
     nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache()
-    nctc_EE, nctc_HR, RL_s_, done  = env.step(nearnest_clustering_policy_UE,topN_caching_policy_BS)
     
+    nctc_EE, nctc_HR, RL_s_, done  = env.step(nearnest_clustering_policy_UE,topN_caching_policy_BS)
+    EE, HR, RL_s_, done  = env.step(action)
     # Save the whole environment
     filenameBF = 'data/Result_nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
     with open(filenameBF+'.pkl', 'wb') as f:  
@@ -543,7 +554,7 @@ if __name__ == "__main__":
     print('nctc_EE=',nctc_EE)
     print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
     print('topN_caching_policy_BS=',topN_caching_policy_BS)
-    
+    #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
     bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
     
@@ -560,3 +571,4 @@ if __name__ == "__main__":
     print('bestEE=',bestEE)
     print('opt_clustering_policy_UE=',opt_clustering_policy_UE)
     print('opt_caching_policy_BS=',opt_caching_policy_BS)
+    #------------------------------------------------------------------------------------------------
