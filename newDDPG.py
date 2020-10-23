@@ -282,7 +282,6 @@ class DDPG:
         return random.sample(self.memory, batch_size)
 
     def train(self):
-        self.Var *= 0.9995
         training_data = np.array(self.sampleMemory(BATCH_SIZE))
         #batch_s,batch_a,batch_r,batch_s1= training_data
         batch_s,batch_a,batch_r,batch_s1=zip(*training_data)

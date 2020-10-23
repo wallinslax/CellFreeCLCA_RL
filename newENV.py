@@ -1,4 +1,6 @@
 # Public Lib
+import gym
+from gym import spaces
 import numpy as np
 from numpy import linalg as LA
 from numpy.random import randn
@@ -134,7 +136,7 @@ def genUserRequest(userPreference):
     #print(index)
     return (index[0])
 
-class BS(object):
+class BS(gym.Env):
     def get_statistic(self):
         print('Calculating statistic...')
         EE_sample_list = []
@@ -190,6 +192,11 @@ class BS(object):
         self.L = nMaxLink
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
+
+        self.dimActCL = self.B*self.U
+        self.dimActCA = self.B*self.F
+        self.dimAct = self.dimActCL + self.dimActCA
+        
         filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 
@@ -212,7 +219,6 @@ class BS(object):
             for u in range(self.U):
                 self.Req[u] = genUserRequest(self.userPreference[u])
             #check topoligy
-            
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,None,None,self.Req,filename)
             # save Topology
             with open(filename + '.pkl', 'wb') as f: 
@@ -252,6 +258,8 @@ class BS(object):
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.dimAct,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=float("inf"), shape=(len(self.s_),), dtype=np.float32)
         '''
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
@@ -316,11 +324,8 @@ class BS(object):
         self.ueSimilarity = np.matmul(self.reqStatistic_norm, self.reqStatistic_norm.T) 
 
     def step(self,action):
-        dimActCL = self.U*self.B
-        dimActCA = self.B*self.F
-        
-        a_cl = action[0:dimActCL]
-        a_ca = action[-dimActCA:]
+        a_cl = action[0:self.dimActCL]
+        a_ca = action[-self.dimActCA:]
 
         # Convert action value to policy //Clustering Part
         connectionScore = np.reshape(a_cl, (self.U,self.B) ) #[env.U x env.B]
@@ -462,7 +467,7 @@ class BS(object):
         observation = self.s_
         reward = self.EE
         done = self.done
-        info = self.Hit_rate
+        info = {"HR":self.Hit_rate}
 
         #return self.EE, self.Hit_rate, self.s_, self.done
         return observation, reward, done, info
@@ -526,10 +531,13 @@ class BS(object):
                 subOpt_caching_policy_BS = caching_policy_BS
         return subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS
 
+    def close(self):
+        pass
+
 if __name__ == "__main__":
     
     # Build ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=10,loadENV = False)
     #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
 
