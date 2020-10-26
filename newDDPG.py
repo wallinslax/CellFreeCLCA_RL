@@ -304,7 +304,8 @@ class DDPG:
 
         # ---------------------- optimize actor ----------------------
         pred_a1 = self.actor.forward(s1)
-        loss_actor = -1*self.critic(s1, pred_a1)###
+        #print(self.critic(s1, pred_a1))
+        loss_actor = -1*self.critic(s1, pred_a1)#############
         loss_actor = loss_actor.mean()
         
         self.optimizer_actor.zero_grad()
@@ -319,6 +320,8 @@ class DDPG:
 
     def weightSync(self,target_model, source_model, tau = 0.001): # Update the target networks (soft update)
         for parameter_target, parameter_source in zip(target_model.parameters(), source_model.parameters()):
+            #print('parameter_target:',parameter_target)
+            #print('parameter_source:',parameter_source)
             parameter_target.data.copy_((1 - tau) * parameter_target.data + tau * parameter_source.data)
 
 if __name__ == "__main__":

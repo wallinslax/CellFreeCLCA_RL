@@ -214,11 +214,11 @@ class BS(gym.Env):
                 np.random.shuffle(seedPreference)
                 self.userPreference[u] = seedPreference
             #print(userPreference)
-            '''[2] Generate User request''' 
+            '''[3] Generate User request''' 
             self.Req = np.zeros(self.U,dtype=int)
             for u in range(self.U):
                 self.Req[u] = genUserRequest(self.userPreference[u])
-            #check topoligy
+            # check topology
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,None,None,self.Req,filename)
             # save Topology
             with open(filename + '.pkl', 'wb') as f: 
@@ -360,23 +360,6 @@ class BS(gym.Env):
         #print('clustering_policy_UE=\n',np.array(clustering_policy_UE))
         #print('caching_policy_BS=\n',np.array(caching_policy_BS))
         #print('subcarrier=\n',np.array(self.subcarrier))
-        #[HR]##############################################################################################################  
-        '''
-        if inspect.stack()[1][3] != 'bruteForce' :
-            for u in range(self.U):
-                self.Req[u] = genUserRequest(self.userPreference[u])
-        '''
-        '''[3] Hit event'''
-        self.Hit = np.zeros(self.U)
-        for u in range(self.U):
-            useBS = clustering_policy_UE[u]
-            counter = 0
-            for bs in useBS:
-                if self.Req[u] in caching_policy_BS[bs]:
-                    counter+=1
-            if counter == len(useBS):
-                self.Hit[u]=1
-        self.Hit_rate = sum(self.Hit)/len(self.Hit)
         #[EE]##############################################################################################################
         '''[4] rho_b'''
         self.rho = np.zeros(self.B)
@@ -407,7 +390,7 @@ class BS(gym.Env):
                     sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u]*self.g[b][uu].conjugate()
                 self.I[u] = self.I[u] + np.power(abs(sum_b),2)
         
-        '''[7]SINR/ [8]Throughput of UE'''
+        '''[7] SINR/ [8]Throughput of UE'''
         self.SINR = np.zeros(self.U) 
         self.Throughput = np.zeros(self.U)
         for u in range(self.U):
@@ -427,6 +410,23 @@ class BS(gym.Env):
         '''[10] Energy efficiency'''
         self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
         self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
+        #[HR]##############################################################################################################  
+        '''
+        if inspect.stack()[1][3] != 'bruteForce' :
+            for u in range(self.U):
+                self.Req[u] = genUserRequest(self.userPreference[u])
+        '''
+        '''[3] Hit event'''
+        self.Hit = np.zeros(self.U)
+        for u in range(self.U):
+            useBS = clustering_policy_UE[u]
+            counter = 0
+            for bs in useBS:
+                if self.Req[u] in caching_policy_BS[bs]:
+                    counter+=1
+            if counter == len(useBS):
+                self.Hit[u]=1
+        self.Hit_rate = sum(self.Hit)/len(self.Hit)
         #[CS]##############################################################################################################
         '''[16] Intra-cluster similarity'''
         self.ICS = np.zeros(self.B) # intra-cluster similarity of each cluster(BS)
@@ -537,14 +537,13 @@ class BS(gym.Env):
 if __name__ == "__main__":
     
     # Build ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=10,loadENV = False)
-    #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-
-
+    #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
 
     #------------------------------------------------------------------------------------------------
     # Derive Policy: nearestClustering_TopNCache
+    '''
     nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache()
     
     nctc_EE, nctc_HR, RL_s_, done  = env.step(nearnest_clustering_policy_UE,topN_caching_policy_BS)
@@ -562,6 +561,7 @@ if __name__ == "__main__":
     print('nctc_EE=',nctc_EE)
     print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
     print('topN_caching_policy_BS=',topN_caching_policy_BS)
+    '''
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
     bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()

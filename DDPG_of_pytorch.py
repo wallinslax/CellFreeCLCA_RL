@@ -8,7 +8,8 @@ import numpy as np
 import gym
 import time
 import matplotlib.pyplot as plt
-
+from datetime import date
+today = date.today()
 #####################  hyper parameters  ####################
 
 MAX_EPISODES = 100
@@ -19,7 +20,6 @@ GAMMA = 0.9     # reward discount
 TAU = 0.01      # soft replacement
 MEMORY_CAPACITY = 10000
 BATCH_SIZE = 32
-TAU = 0.01
 
 
 ###############################  DDPG  ####################################
@@ -103,6 +103,7 @@ class DDPG(object):
     def learn(self):
 
         for x in self.Actor_target.state_dict().keys():
+            print(x)
             eval('self.Actor_target.' + x + '.data.mul_((1-TAU))')
             eval('self.Actor_target.' + x + '.data.add_(TAU*self.Actor_eval.' + x + '.data)')
         for x in self.Critic_target.state_dict().keys():
@@ -157,6 +158,7 @@ env = gym.make(ENV_NAME)
 env = env.unwrapped
 env.seed(1)
 s_dim = env.observation_space.shape[0]
+#a_dim = env.action_space.n
 a_dim = env.action_space.shape[0]
 a_bound = env.action_space.high
 
@@ -212,7 +214,7 @@ plt.xlabel("Iteration") # x label
 plt.grid()
 plt.legend()
 fig = plt.gcf()
-filename = 'data/DDPG_of_pytorch_'+ENV_NAME
+filename = 'data/DDPG_of_pytorch_'+ENV_NAME+'_'+str(today)
 fig.savefig(filename + '.eps', format='eps',dpi=1200)
 fig.savefig(filename + '.png', format='png',dpi=1200)
 fig.show()
