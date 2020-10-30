@@ -48,7 +48,7 @@ VISUALIZE = False
 SEED = 0
 MAX_PATH_LENGTH = 500
 NUM_EPISODES = 12000
-GAMMA=0.99
+GAMMA=0.9
 BATCH_SIZE = 128
 LR_A = 1e-4
 LR_C = 1e-3
@@ -175,8 +175,8 @@ class critic(nn.Module):
 
         self.state_dim = state_size
         self.action_dim = action_size
-        self.h1_dim = 400
-        self.h2_dim = 400
+        self.h1_dim = 2*state_size
+        self.h2_dim = 2*action_size
         self.fc1 = nn.Linear(self.state_dim, self.h1_dim)
         torch.nn.init.xavier_uniform_(self.fc1.weight)
         self.bn1 = nn.BatchNorm1d(self.h1_dim)
@@ -229,7 +229,7 @@ class DDPG:
             self.critic_target.cuda()
             
         # optimizers
-        self.optimizer_actor = torch.optim.Adam(self.actor.parameters(), lr = self.actor_lr)
+        self.optimizer_actor = torch.optim.Adam(self.actor.parameters(), lr = self.actor_lr,weight_decay=1e-2)
         self.optimizer_critic = torch.optim.Adam(self.critic.parameters(), lr = self.critic_lr, weight_decay=1e-2)
         
         # critic loss
@@ -290,8 +290,9 @@ class DDPG:
         r1 = Variable(FloatTensor(np.array(batch_r).reshape(-1,1)))
         s2 = Variable(FloatTensor(batch_s1))
         
-        a2 = self.actor_target(s2)
+        
         # ---------------------- optimize critic ----------------------###
+        a2 = self.actor_target(s2)
         next_val = self.critic_target(s2, a2).detach()
         q_expected = r1 + self.gamma*next_val
         q_predicted = self.critic(s1, a1)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Proprietary Design
-import robot_ghliu
+#import robot_ghliu
 from newDDPG import DDPG
 from newENV import BS
 # Public Lib
@@ -22,10 +22,10 @@ LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
           
-MAX_EPISODES = 10**4+10000
-MAX_EP_STEPS = 10**4
+MAX_EPISODES = 10**3
+MAX_EP_STEPS = 10**2
 warmup = -1
-
+epsilon = 0.2
 #####################################
 def plotMetric(poolEE,poolBestEE):
     xScale = 100
@@ -61,53 +61,64 @@ def train_1act(env):
     #ddpg_s = DDPG(obs_dim = obs_dim, act_dim = actDim)###
     ddpg_cl = DDPG(obs_dim = obs_dim, act_dim = cluster_act_dim)
     ddpg_ca = DDPG(obs_dim = obs_dim, act_dim = cache_act_dim)
+    
     #ddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
     #ddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
     mu = 0
     noiseSigma = 1 # control exploration
-    obs = env.reset()# Get initial state
+    
     #---------------------------------
     # Load Optimal clustering and caching Policy
-    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
     filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-12'
-    with open(filenameBF+'.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     # Load opt_caching_policy_BS and convert to opt_caching_state
     opt_caching_state = np.zeros([env.B,env.F])
     for b in range(env.B):
         opt_caching_state[b][ list(opt_caching_policy_BS[b]) ] = 1
-    #---------------------------------
+    #--------------------------------- 
     for ep in tqdm(range(MAX_EPISODES)):
-        if ep <= warmup:
-            action = env.action_space.sample()
-        else:
-            if(ep%10 ==0):
+        ep_reward = 0
+        obs = env.reset()# Get initial state
+        for step in range(MAX_EP_STEPS):
+            #Epsilon-Greedy Algorithm
+            # https://medium.com/analytics-vidhya/the-epsilon-greedy-algorithm-for-reinforcement-learning-5fe6f96dc870
+            '''
+            if np.random.rand() > epsilon: 
+                noise = np.zeros(cluster_act_dim)
+                a_cl = ddpg_cl.action(obs,noise)# choose action [ env.U*env.B x 1 ]
+                
+                a_ca = opt_caching_state.flatten()
+                action = np.concatenate((a_cl, a_ca), axis=0)
+            
+            else:
+                action = env.action_space.sample()
+                action[-cache_act_dim:] = opt_caching_state.flatten()
+            '''
+            if(step%30 ==0):
                 noiseSigma*=0.995
-            #noise = np.random.normal(mu, noiseSigma,size=actDim)#N(0,1)
-            #action = ddpg_s.action(obs,noise)# choose action [ env.U*env.B x 1 ]]
             noise = np.random.normal(mu, noiseSigma,size=cluster_act_dim)
             a_cl = ddpg_cl.action(obs,noise)# choose action [ env.U*env.B x 1 ]
-            noise = np.random.normal(mu, noiseSigma,size=cache_act_dim)
-            a_ca = ddpg_ca.action(obs,noise)# choose action [ env.B*env.F x 1 ]
             a_ca = opt_caching_state.flatten()
             action = np.concatenate((a_cl, a_ca), axis=0)
+            
+            # take action to ENV
+            obs2, reward, done, info = env.step(action)
+            EE = reward
+            poolEE.append(EE)
+            HR = info["HR"]
 
-        # take action to ENV
-        obs2, reward, done, info = env.step(action)
-        EE = reward
-        poolEE.append(EE)
-        HR = info["HR"]
-
-        # RL update
-        ddpg_cl.addMemory([obs,a_cl,reward,obs2])
-        ddpg_ca.addMemory([obs,a_ca,reward,obs2])
-        if len(ddpg_cl.memory) > ddpg_cl.BATCH_SIZE:
-            lossActor, lossCritic = ddpg_cl.train()
-            poolLossActor.append(lossActor)
-            poolLossCritic.append(lossCritic)
-        obs = obs2
+            # RL update
+            ddpg_cl.addMemory([obs,a_cl,reward,obs2])
+            ddpg_ca.addMemory([obs,a_ca,reward,obs2])
+            if len(ddpg_cl.memory) > ddpg_cl.BATCH_SIZE:
+                lossActor, lossCritic = ddpg_cl.train()
+                poolLossActor.append(lossActor)
+                poolLossCritic.append(lossCritic)
+            obs = obs2
+            ep_reward += reward
+        if ep_reward>8000:
+            print('Episode:{} Reward:{} Explore:{}'.format(ep,ep_reward,noiseSigma))
     #---------------------------------------------------------------------------------------------    
     '''
     # save actor parameter
@@ -164,10 +175,6 @@ def train_1act(env):
     # plt.plot(range(len(poolEE)),poolEE,'bo-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
 
 if __name__ == '__main__':
-    filename = 'data/BF_vs_RL4AP_4UE_10001_2020-10-26'
-    with open(filename+'.pkl','rb') as f: 
-        env, poolEE,poolLossActor,poolLossCritic = pickle.load(f)
-    print(poolEE[-10:])
     # new ENV
     #env1 = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=10,loadENV = True)
     env3 = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)

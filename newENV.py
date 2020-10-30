@@ -337,7 +337,7 @@ class BS(gym.Env):
             #print(connectionScore[u].argsort()[::-1][:self.L])
             bestLBS = connectionScore[u].argsort()[::-1][:self.L]
             selectedBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
-            clustering_policy_UE.append(selectedBS)
+            clustering_policy_UE.append(bestLBS)
         
         # Convert action value to policy //Caching Part
         cacheScore = np.reshape(a_ca, (self.B,self.F) )
@@ -361,55 +361,7 @@ class BS(gym.Env):
         #print('caching_policy_BS=\n',np.array(caching_policy_BS))
         #print('subcarrier=\n',np.array(self.subcarrier))
         #[EE]##############################################################################################################
-        '''[4] rho_b'''
-        self.rho = np.zeros(self.B)
-        for b in range(self.B):
-            competeUE = self.clustering_policy_BS[b]
-            if len(competeUE) != 0:
-                self.rho[b] = P_SBS / sum( np.power(abs(self.g[b][competeUE]),2) )
-            #print( self.rho[b] )
-        
-        '''[5] received power'''
-        self.P_r = np.zeros(self.U)
-        for u in range(self.U):
-            for b in clustering_policy_UE[u]:
-                self.P_r[u] += np.sqrt(self.rho[b]) * np.power(abs(self.g[b][u]),2)
-            self.P_r[u] = np.power(self.P_r[u],2)
-
-        '''[6] Interference'''
-        self.I = np.zeros(self.U)
-        for u in range(self.U):
-            other_u = list(range(self.U))
-            other_u.remove(u)
-            #print(other_u)
-            for uu in other_u:
-                sum_b = 0
-                for b in range(self.U):
-                    #chk = self.g[b][u] * self.g[b][uu].conjugate() 
-                    #print(chk)
-                    sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u]*self.g[b][uu].conjugate()
-                self.I[u] = self.I[u] + np.power(abs(sum_b),2)
-        
-        '''[7] SINR/ [8]Throughput of UE'''
-        self.SINR = np.zeros(self.U) 
-        self.Throughput = np.zeros(self.U)
-        for u in range(self.U):
-            self.SINR[u] = self.P_r[u]/(self.I[u] + n_var)
-            self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
-
-        '''[9] System power consumption'''
-        missCounter = 0
-        for u in range(self.U):
-            useBS = clustering_policy_UE[u]
-            for bs in useBS:
-                if self.Req[u] not in caching_policy_BS[bs]: #Miss
-                    missCounter += 1
-                    
-        self.P_sys = P_t*self.B + P_b*missCounter# + self.B*P_o_SBS + P_o_MBS 
-        
-        '''[10] Energy efficiency'''
-        self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
-        self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
+        self.EE = self.calEE(clustering_policy_UE, caching_policy_BS)
         #[HR]##############################################################################################################  
         '''
         if inspect.stack()[1][3] != 'bruteForce' :
@@ -472,11 +424,80 @@ class BS(gym.Env):
         #return self.EE, self.Hit_rate, self.s_, self.done
         return observation, reward, done, info
 
+    def calEE(self,clustering_policy_UE,caching_policy_BS):
+        '''[1] clustering_policy_BS'''
+        clustering_policy_BS = []
+        for b in range(self.B):
+            competeUE = []
+            for u in range(self.U):
+                if b in clustering_policy_UE[u]:
+                    competeUE.append(u) #the UE set in b-th cluster   
+            clustering_policy_BS.append(competeUE)
+
+        '''[4] rho_b'''
+        self.rho = np.zeros(self.B)
+        for b in range(self.B):
+            competeUE = clustering_policy_BS[b]
+            #print(self.g[b][competeUE])
+            #print(sum( np.power(abs(self.g[b][competeUE]),2) ))
+            if len(competeUE) != 0:
+                self.rho[b] = P_SBS / sum( np.power(abs(self.g[b][competeUE]),2) )
+            #print( self.rho[b] )
+        
+        '''[5] received power'''
+        self.P_r = np.zeros(self.U)
+        for u in range(self.U):
+            for b in clustering_policy_UE[u]:
+                self.P_r[u] += np.sqrt(self.rho[b]) * np.power(abs(self.g[b][u]),2)
+            self.P_r[u] = np.power(self.P_r[u],2)
+
+        '''[6] Interference'''
+        self.I = np.zeros(self.U)
+        for u in range(self.U):
+            other_u = list(range(self.U))
+            other_u.remove(u)
+            #print(other_u)
+            for uu in other_u:
+                sum_b = 0
+                for b in range(self.U):
+                    #chk = self.g[b][u] * self.g[b][uu].conjugate() 
+                    #print(chk)
+                    sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u]*self.g[b][uu].conjugate()
+                self.I[u] = self.I[u] + np.power(abs(sum_b),2)
+        
+        '''[7] SINR/ [8]Throughput of UE'''
+        self.SINR = np.zeros(self.U) 
+        self.Throughput = np.zeros(self.U)
+        for u in range(self.U):
+            self.SINR[u] = self.P_r[u]/(self.I[u] + n_var)
+            self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
+
+        '''[9] System power consumption'''
+        missCounter = 0
+        for u in range(self.U):
+            useBS = clustering_policy_UE[u]
+            for bs in useBS:
+                if self.Req[u] not in caching_policy_BS[bs]: #Miss
+                    missCounter += 1
+                    
+        self.P_sys = P_t*self.B + P_b*missCounter# + self.B*P_o_SBS + P_o_MBS 
+        
+        '''[10] Energy efficiency'''
+        self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
+        self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
+        return self.EE
+
     def bruteForce(self):
         print("this is brute force for EE")
         # generate all posible clustering_policy_UE
-        choiceBS = list(combinations (range(self.B), self.L))
+        choiceBS = []
+        for i in range(self.B+1):
+            subChoiceBS = list(combinations (range(self.B), i))
+            choiceBS += subChoiceBS
+
+        choiceBSx = list(combinations (range(self.B), self.L))
         print('choiceBS:',choiceBS)
+        print('choiceBSx:',choiceBSx)
         print('len(choiceBS)^self.U:',pow(len(choiceBS),self.U))
         universe_clustering_policy_UE = list(product(choiceBS,repeat=self.U))
 
@@ -498,7 +519,7 @@ class BS(gym.Env):
         itr = 0
         for clustering_policy_UE in tqdm(universe_clustering_policy_UE):
             for caching_policy_BS in universe_caching_policy_BS:
-                EE, HR, RL_s_, done  = self.step(clustering_policy_UE,caching_policy_BS)
+                EE = self.calEE(clustering_policy_UE,caching_policy_BS)
                 #print("iteration:",itr,"EE=",EE)
                 if EE>bestEE:
                     bestEE = EE
@@ -509,22 +530,26 @@ class BS(gym.Env):
         with concurrent.futures.ProcessPoolExecutor(max_workers= (num_cores-2) ) as executor:
             futures = []
             for caching_policy_BS in universe_caching_policy_BS:
+                #subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS = self.smallPeice(universe_clustering_policy_UE,caching_policy_BS)
                 future = executor.submit(self.smallPeice, universe_clustering_policy_UE,caching_policy_BS) 
                 futures.append(future)
             for future in tqdm(concurrent.futures.as_completed(futures),total=len(futures)):
+                #print(future.result())
                 subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS = future.result()
                 if subBestEE>bestEE:
                     bestEE = subBestEE
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
         
+        
 
-        return self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS
+        return bestEE, opt_clustering_policy_UE, opt_caching_policy_BS
 
     def smallPeice(self,universe_clustering_policy_UE,caching_policy_BS):
         subBestEE=0
         for clustering_policy_UE in universe_clustering_policy_UE:
-            EE, HR, RL_s_, done = self.step(clustering_policy_UE,caching_policy_BS)
+            EE = self.calEE(clustering_policy_UE,caching_policy_BS)
+            #EE, HR, RL_s_, done = self.step(clustering_policy_UE,caching_policy_BS)
             if EE>subBestEE:
                 subBestEE = EE
                 subOpt_clustering_policy_UE = clustering_policy_UE
@@ -537,10 +562,15 @@ class BS(gym.Env):
 if __name__ == "__main__":
     
     # Build ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    #env = BS(nBS=8,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-
+    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=6,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    
+    # Load the whole environment with Best Clustering and Best Caching   
+    filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-28'
+    with open(filenameBF+'.pkl','rb') as f: 
+        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+    EE = env.calEE(opt_clustering_policy_UE,opt_caching_policy_BS)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: nearestClustering_TopNCache
     '''
@@ -564,7 +594,7 @@ if __name__ == "__main__":
     '''
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    bs_coordinate, u_coordinate, g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
+    bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
     
     # Save the whole environment with Best Clustering and Best Caching
     filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)

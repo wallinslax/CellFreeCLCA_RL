@@ -12,7 +12,7 @@ from datetime import date
 today = date.today()
 #####################  hyper parameters  ####################
 
-MAX_EPISODES = 100
+MAX_EPISODES = 200
 MAX_EP_STEPS = 200
 LR_A = 0.001    # learning rate for actor
 LR_C = 0.002    # learning rate for critic
@@ -75,8 +75,6 @@ class CNet(nn.Module):   # ae(s)=a
         return actions_value
         '''
 
-
-
 class DDPG(object):
     def __init__(self, a_dim, s_dim, a_bound,):
         self.a_dim, self.s_dim, self.a_bound = a_dim, s_dim, a_bound,
@@ -101,9 +99,8 @@ class DDPG(object):
         return self.Actor_eval(s_unsqueeze)[0].detach() # ae（s）
 
     def learn(self):
-
         for x in self.Actor_target.state_dict().keys():
-            print(x)
+            #print(x)
             eval('self.Actor_target.' + x + '.data.mul_((1-TAU))')
             eval('self.Actor_target.' + x + '.data.add_(TAU*self.Actor_eval.' + x + '.data)')
         for x in self.Critic_target.state_dict().keys():
