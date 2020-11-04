@@ -150,12 +150,14 @@ class actor(nn.Module):
         x = self.fc1(state)
         x = self.bn1(x)
         x = self.ln1(x)
-        x = F.relu(x)
+        #x = F.relu(x)
+        x = F.tanh(x)
 
         x = self.fc2(x)
         x = self.bn2(x)
         x = self.ln2(x)
-        x = F.relu(x)
+        #x = F.relu(x)
+        x = F.tanh(x)
 
         x = self.fc3(x)
         #action = F.relu(x)

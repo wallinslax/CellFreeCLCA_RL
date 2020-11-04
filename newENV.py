@@ -5,7 +5,8 @@ import numpy as np
 from numpy import linalg as LA
 from numpy.random import randn
 from random import randint
-import os,math,random,scipy.stats,itertools,csv,pickle,inspect
+import scipy.stats
+import os,math,random,itertools,csv,pickle,inspect
 from itertools import combinations,permutations,product
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -58,7 +59,7 @@ def UE_SBS_location_distribution(lambda0): #PPP
     points = np.random.rand(numbPoints, 2)-0.5
     return points
 
-def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,clustering_policy_UE,caching_policy_BS,Req,filename):
+def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_policy_UE,caching_policy_BS,EE,filename):
     plt.cla()
     # AP
     xx_bs = bs_coordinate[:,0]
@@ -98,16 +99,16 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,clustering_policy_U
                 yy_bs = bs_coordinate[bs,1]
                 plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='--',color=color[u])
             
-
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
-    plt.title('Distribution of '+str(len(bs_coordinate))+'APs,'+str(len(u_coordinate))+'UEs')
+    finalValue = "{:.2f}".format(EE)
+    plt.title(filename+'\nwith EE:'+finalValue)
     plt.axis('equal')
     #plt.legend(loc='upper right')
     plt.legend()
     #plt.show()
     fig = plt.gcf()
     if filename:
-        fig.savefig(filename + '.eps', format='eps',dpi=1200)
+        #fig.savefig(filename + '.eps', format='eps',dpi=1200)
         fig.savefig(filename + '.png', format='png',dpi=1200)
     fig.show()
     fig.canvas.draw()
@@ -153,19 +154,13 @@ class BS(gym.Env):
                 fileSet = np.arange(self.F)
                 np.random.shuffle(fileSet)
                 random_caching_policy_BS.append(fileSet[:self.N])
-
-            EE_norm, CS_norm,HR, EE, CS, RL_s_, done = self.step(random_clustering_policy_UE,random_caching_policy_BS)
+            EE = self.calEE(random_clustering_policy_UE, random_caching_policy_BS)
             EE_sample_list.append(EE)
-            CS_sample_list.append(CS)
         EE_mean = np.mean(EE_sample_list)
         EE_std = np.std(EE_sample_list, ddof=1)
-        CS_mean = np.mean(CS_sample_list)
-        CS_std = np.std(CS_sample_list, ddof=1)
         print('EE_mean = '+str(EE_mean))
         print('EE_std = '+str(EE_std))
-        print('CS_mean = '+str(CS_mean))
-        print('CS_std = '+str(CS_std))
-        return EE_mean,EE_std,CS_mean,CS_std
+        return EE_mean,EE_std
         
     def channel_reset(self):
         '''[2] Pair-wise distance'''
@@ -193,9 +188,7 @@ class BS(gym.Env):
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
 
-        self.dimActCL = self.B*self.U
-        self.dimActCA = self.B*self.F
-        self.dimAct = self.dimActCL + self.dimActCA
+        
         
         filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'
         if(loadENV):# load Topology
@@ -219,7 +212,7 @@ class BS(gym.Env):
             for u in range(self.U):
                 self.Req[u] = genUserRequest(self.userPreference[u])
             # check topology
-            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,None,None,self.Req,filename)
+            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,None,None,filename)
             # save Topology
             with open(filename + '.pkl', 'wb') as f: 
                 pickle.dump([self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req], f)
@@ -254,12 +247,12 @@ class BS(gym.Env):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
+        
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.dimAct,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=0, high=float("inf"), shape=(len(self.s_),), dtype=np.float32)
+        
         '''
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
@@ -267,18 +260,34 @@ class BS(gym.Env):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()]) 
-        '''     
-        #print('lala')
-   
+        ''' 
+        self.dimActCL = self.B*self.U
+        self.dimActCA = self.B*self.F
+        self.dimAct = self.dimActCL + self.dimActCA
+        self.dimObs = len(self.s_)
+
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.dimAct,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=float("inf"), shape=(len(self.s_),), dtype=np.float32)
+
     def reset(self):  
         self.SINR = np.zeros(self.U)
+        self.action_space.sample()
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
+        
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
+        '''
+        self.s_ = np.hstack([  self.g.real.flatten(),
+                                self.g.imag.flatten(),
+                                self.clustering_state.flatten(),
+                                self.caching_state.flatten(),
+                                self.reqStatistic_norm.flatten(),
+                                self.Req.flatten()]) 
+        '''
         return self.s_
     
     def nearestClustering_TopNCache(self):
@@ -322,8 +331,8 @@ class BS(gym.Env):
         #print('LA.norm(self.reqStatistic, axis=1)=',LA.norm(self.reqStatistic, axis=1))
         self.reqStatistic_norm = self.reqStatistic/(LA.norm(self.reqStatistic, axis=1)).reshape((self.U,1))
         self.ueSimilarity = np.matmul(self.reqStatistic_norm, self.reqStatistic_norm.T) 
-
-    def step(self,action):
+    
+    def action2Policy(self,action):
         a_cl = action[0:self.dimActCL]
         a_ca = action[-self.dimActCA:]
 
@@ -337,7 +346,7 @@ class BS(gym.Env):
             #print(connectionScore[u].argsort()[::-1][:self.L])
             bestLBS = connectionScore[u].argsort()[::-1][:self.L]
             selectedBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
-            clustering_policy_UE.append(bestLBS)
+            clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
         cacheScore = np.reshape(a_ca, (self.B,self.F) )
@@ -345,21 +354,11 @@ class BS(gym.Env):
         for b in range(self.B):
             top_N_idx = np.sort(cacheScore[b].argsort()[-self.N:])# pick up N file with highest score, N is capacity of BSs
             caching_policy_BS.append(top_N_idx)
-        
-        '''[1] clustering_policy_BS'''
-        self.cluster_size = []
-        self.clustering_policy_BS = []
-        for b in range(self.B):
-            competeUE = []
-            for u in range(self.U):
-                if b in clustering_policy_UE[u]:
-                    competeUE.append(u) #the UE set in b-th cluster   
-            self.clustering_policy_BS.append(competeUE)
-            clusterSize = len(competeUE) #the number of UE in bth cluster      
-            self.cluster_size.append(clusterSize)
-        #print('clustering_policy_UE=\n',np.array(clustering_policy_UE))
-        #print('caching_policy_BS=\n',np.array(caching_policy_BS))
-        #print('subcarrier=\n',np.array(self.subcarrier))
+
+        return clustering_policy_UE, caching_policy_BS 
+
+    def step(self,action):
+        clustering_policy_UE, caching_policy_BS = self.action2Policy(action)
         #[EE]##############################################################################################################
         self.EE = self.calEE(clustering_policy_UE, caching_policy_BS)
         #[HR]##############################################################################################################  
@@ -380,7 +379,7 @@ class BS(gym.Env):
                 self.Hit[u]=1
         self.Hit_rate = sum(self.Hit)/len(self.Hit)
         #[CS]##############################################################################################################
-        '''[16] Intra-cluster similarity'''
+        '''[16] Intra-cluster similarity
         self.ICS = np.zeros(self.B) # intra-cluster similarity of each cluster(BS)
         for b in range(self.B):
             UE_pair = [list(i) for i in list( combinations (self.clustering_policy_BS[b], 2))]
@@ -390,7 +389,7 @@ class BS(gym.Env):
                 self.ICS[b] = self.ICS[b]/len(UE_pair)
         
         self.CS = sum(self.ICS)/self.B
-        self.CS_norm = (self.CS - self.CS_mean)/self.CS_std # Z-score normalization
+        self.CS_norm = (self.CS - self.CS_mean)/self.CS_std # Z-score normalization'''
         ###############################################################################################################
         '''[18] State'''
         #convert culstering policy to binary form
@@ -402,6 +401,7 @@ class BS(gym.Env):
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
+        
         self.s_ = np.hstack([  self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
@@ -413,7 +413,7 @@ class BS(gym.Env):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])  
-        '''  
+        ''' 
         
         '''[19] Whether episode done'''
         observation = self.s_
@@ -587,7 +587,7 @@ if __name__ == "__main__":
         bs_coordinate, u_coordinate , g, userPreference, Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS = pickle.load(f)
     
     # Plot
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,nearnest_clustering_policy_UE,topN_caching_policy_BS,Req,filenameBF)
+    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,nearnest_clustering_policy_UE,topN_caching_policy_BS,filenameBF)
     print('nctc_EE=',nctc_EE)
     print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
     print('topN_caching_policy_BS=',topN_caching_policy_BS)
@@ -597,7 +597,7 @@ if __name__ == "__main__":
     bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
     
     # Save the whole environment with Best Clustering and Best Caching
-    filenameBF = 'data/Result_BruteForce_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
+    filenameBF = 'data/PolicyVisualized_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
     with open(filenameBF+'.pkl', 'wb') as f:  
         pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
     # Load the whole environment with Best Clustering and Best Caching   
@@ -605,7 +605,7 @@ if __name__ == "__main__":
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     
     # Plot
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,opt_clustering_policy_UE,opt_caching_policy_BS,Req,filenameBF)
+    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,opt_clustering_policy_UE,Req,opt_caching_policy_BS,bestEE,filenameBF)
     print('bestEE=',bestEE)
     print('opt_clustering_policy_UE=',opt_clustering_policy_UE)
     print('opt_caching_policy_BS=',opt_caching_policy_BS)
