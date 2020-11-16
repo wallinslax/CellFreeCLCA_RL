@@ -157,11 +157,11 @@ class actor(nn.Module):
         x = self.bn2(x)
         x = self.ln2(x)
         #x = F.relu(x)
-        x = F.tanh(x)
+        x = torch.tanh(x)
 
         x = self.fc3(x)
         #action = F.relu(x)
-        action = F.tanh(x)
+        action = torch.tanh(x)
         #action = F.softmax(x)
         #action = F.sigmoid(x)
         '''

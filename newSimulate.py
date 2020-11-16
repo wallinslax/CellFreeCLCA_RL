@@ -61,14 +61,17 @@ def trainModel(env,actMode):
     #ddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
     #ddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
     #---------------------------------------------------------------------------------------------
+    '''
     # Load Optimal clustering and caching Policy
     filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-28'
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+    
     # Load opt_caching_policy_BS and convert to opt_caching_state
     opt_caching_state = np.zeros([env.B,env.F])
     for b in range(env.B):
         opt_caching_state[b][ list(opt_caching_policy_BS[b]) ] = 1
+    '''
     #---------------------------------------------------------------------------------------------
     mu = 0
     noiseSigma = 1 # control exploration
@@ -138,40 +141,42 @@ def trainModel(env,actMode):
     #---------------------------------------------------------------------------------------------    
     # Save actor SDDPG
     if actMode == '2act':
-        filenameDDPG_CL = 'data/2ACT_' + "DDPG_CL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
-        filenameDDPG_CA = 'data/2ACT_' + "DDPG_CA_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
+        filenameDDPG_CL = 'data/2ACT_' + "DDPG_CL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'+ str(today) + '.pt'
+        filenameDDPG_CA = 'data/2ACT_' + "DDPG_CA_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'+ str(today) + '.pt'
         torch.save(ddpg_cl.actor, filenameDDPG_CL)
         torch.save(ddpg_ca.actor, filenameDDPG_CA)
         ddpg_cl.actor = torch.load(filenameDDPG_CL)
         ddpg_ca.actor = torch.load(filenameDDPG_CA)
     # Save actor MDDPG
     elif actMode == '1act': 
-        filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today) + '.pt'
+        filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today) + '.pt'
         torch.save(ddpg_s.actor, filenameSDDPG)
     
     # Save the plot point
     if actMode == '2act':
-        filename = 'data/2ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
+        filename = 'data/2ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
     elif actMode == '1act':
-        filename = 'data/1ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
+        filename = 'data/1ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
 
     with open(filename+'.pkl', 'wb') as f:  
         pickle.dump([env, poolEE,poolLossActor,poolLossCritic,], f)
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     trainModel(env,actMode='1act')
     #---------------------------------------------------------------------------------------------
+    '''
     # Load Optimal clustering and caching Policy
-    filenameBF = 'data/Result_BruteForce_4AP_4UE_2020-10-28'
+    filenameBF = 'data/BF_4AP_4UE_5File_2Cache_2020-11-10'
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+    '''
+
     #---------------------------------------------------------------------------------------------
-    
     # Load the plot point 
     #filename = 'data/BF_vs_RL4AP_4UE_1000_2020-11-02'
-    filename = 'data/1ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
+    filename = 'data/1ACT_'+ str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(MAX_EPISODES*MAX_EP_STEPS)+'_'+str(today)
     with open(filename+'.pkl','rb') as f: 
         env, poolEE,poolLossActor,poolLossCritic = pickle.load(f)
     #---------------------------------------------------------------------------------------------
@@ -183,13 +188,13 @@ if __name__ == '__main__':
     nXpt=len(poolEE)
     plt.plot(range(nXpt),poolEE,'b-',label='EE of 1 Actors')
     #plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
-    plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='EE of Brute Force')
-    
-    finalValue = "{:.2f}".format(bestEE)
-    plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
     finalValue = "{:.2f}".format(poolEE[-1])
     plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
-
+    '''
+    plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='EE of Brute Force')
+    finalValue = "{:.2f}".format(bestEE)
+    plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+    '''
 
     titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
                                     ',nUE='+str(env.U)+\
@@ -210,30 +215,34 @@ if __name__ == '__main__':
     #---------------------------------------------------------------------------------------------
     # plot CL/CA Policy
     ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
-    filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(today-1) + '.pt'
+    filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today) + '.pt'
+    filenameSDDPG = 'data/10.4.2.5.2/'
     ddpg_s.actor = torch.load(filenameSDDPG)
-    sampleCLPolicy = []
-    sampleCAPolicy = []
-    sampleEE = 0
+    
+    rlBestEE = 0
+    rlBestCLPolicy_UE=[]
+    rlBestCAPolicy_BS=[]
     obs = env.reset()# Get initial state
     for i in range(1000):
         noise = np.random.normal(0,0,size=env.dimAct)
         action = ddpg_s.action(obs,noise)
         obs, reward, done, info = env.step(action)
-        if reward > 130:
-            sampleCLPolicy_UE, sampleCAPolicy_BS = env.action2Policy(action)
-            sampleEE = reward
-            print('sampleCLPolicy_UE:',sampleCLPolicy_UE)
-            print('sampleCAPolicy_BS:',sampleCAPolicy_BS)
-            print('sampleEE:',sampleEE)
-            print('opt_clustering_policy_UE:',opt_clustering_policy_UE)
-            print('opt_caching_policy_BS:',opt_caching_policy_BS)
-            print('bestEE:',bestEE)
-            break
-    filenamePV = 'data/PolicyVisualization_1ACT_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,sampleCLPolicy_UE,sampleCAPolicy_BS,sampleEE,filenamePV)
+        if reward>rlBestEE:
+            rlBestEE = reward
+            rlBestCLPolicy_UE, rlBestCAPolicy_BS = env.action2Policy(action)
+    print('rlBestCLPolicy_UE:',rlBestCLPolicy_UE)
+    print('rlBestCAPolicy_BS:',rlBestCAPolicy_BS)
+    print('rlBestEE:',rlBestEE)
+    '''
+    print('opt_clustering_policy_UE:',opt_clustering_policy_UE)
+    print('opt_caching_policy_BS:',opt_caching_policy_BS)
+    print('bestEE:',bestEE)
+    '''
+    displayrlBestEE = "{:.2f}".format(rlBestEE)
+    filenamePV = 'data/PolicyVisualization_1ACT_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)+'_'+displayrlBestEE
+    plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,rlBestCLPolicy_UE,rlBestCAPolicy_BS,displayrlBestEE,filenamePV)
 
-    filenameBF = 'data/PolicyVisualization_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_'+str(today)
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
+    #filenameBF = 'data/PolicyVisualization_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)
+    #plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
     #---------------------------------------------------------------------------------------------
     
