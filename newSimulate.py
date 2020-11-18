@@ -17,6 +17,9 @@ from tqdm import tqdm
 from datetime import date
 today = date.today()
 os.environ['CUDA_VISIBLE_DEVICES']='1'
+import concurrent.futures
+import multiprocessing
+num_cores = multiprocessing.cpu_count()
 #####################  hyper parameters  ####################
 # Simulation Parameter
 LOAD_EVN = True
@@ -49,7 +52,7 @@ def plotMetric(poolEE,poolBestEE):
     fig.canvas.draw()
     plt.pause(0.001)
 
-def trainModel(env,actMode):
+def trainModel(env,actMode,changeReq,changeChannel):
     poolEE=[]
     poolHR=[]
     poolLossActor = []
@@ -95,6 +98,14 @@ def trainModel(env,actMode):
             '''
             if(step%30 ==0):
                 noiseSigma*=0.995
+                
+                if changeReq:
+                    env.resetReq()
+
+                if changeChannel:
+                    env.resetChannel()
+                
+                    
 
             if actMode == '2act':
                 noise = np.random.normal(mu, noiseSigma,size=env.dimActCL)
@@ -138,7 +149,12 @@ def trainModel(env,actMode):
 
         if ep_reward>10000:
             print('\nEpisode:{} Reward:{} Explore:{}'.format(ep,ep_reward,noiseSigma))
-    #---------------------------------------------------------------------------------------------    
+        
+        
+        
+    #---------------------------------------------------------------------------------------------  
+    #return ddpg_s.actor,env,poolEE,poolLossActor,poolLossCritic
+    #---------------------------------------------------------------------------------------------     
     # Save actor SDDPG
     if actMode == '2act':
         filenameDDPG_CL = 'data/2ACT_' + "DDPG_CL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'+ str(today) + '.pt'
@@ -163,15 +179,44 @@ def trainModel(env,actMode):
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    trainModel(env,actMode='1act')
-    #---------------------------------------------------------------------------------------------
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     '''
+    with concurrent.futures.ProcessPoolExecutor(max_workers= (num_cores-2) ) as executor:
+        futures = []
+        for i in range(num_cores-3):
+
+            #subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS = self.smallPeice(universe_clustering_policy_UE,caching_policy_BS)
+            future = executor.submit(trainModel, env,'1act',True,False) 
+            futures.append(future)
+        bestEE=0
+
+        for future in tqdm(concurrent.futures.as_completed(futures),total=len(futures)):
+            #print(future.result())
+            ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)
+            ddpg_s.actor,env,poolEE,poolLossActor,poolLossCritic = future.result()
+            obs = env.reset()
+            subBestEE = 0
+            for i in range(1000):
+                noise = np.random.normal(0,0,size=env.dimAct)
+                action = ddpg_s.action(obs,noise)
+                obs, reward, done, info = env.step(action)
+                if reward>subBestEE:
+                    subBestEE = reward
+            if subBestEE>bestEE:
+                bestEE = subBestEE
+                kingActor = ddpg_s.actor
+                kingPoolEE = poolEE
+                kingPoolLossActor = poolLossActor
+                kingPoolLossCritic = poolLossCritic
+    '''
+    trainModel(env,actMode='1act',changeReq=True, changeChannel=False)
+    #---------------------------------------------------------------------------------------------
+    
     # Load Optimal clustering and caching Policy
-    filenameBF = 'data/BF_4AP_4UE_5File_2Cache_2020-11-10'
+    filenameBF = 'data/4.4.2.5.2/BF_4AP_4UE_5File_2Cache_2020-11-10'
     with open(filenameBF+'.pkl','rb') as f: 
         bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-    '''
+    
 
     #---------------------------------------------------------------------------------------------
     # Load the plot point 
@@ -181,6 +226,9 @@ if __name__ == '__main__':
         env, poolEE,poolLossActor,poolLossCritic = pickle.load(f)
     #---------------------------------------------------------------------------------------------
     # plot Brute Force V.S. RL
+    print(max(poolLossCritic))
+    print(min(poolLossActor))
+    print(max(poolEE))
     plt.cla()
     plt.plot(range(len(poolLossActor)),poolLossActor,'r-',label='Loss of actor')
     plt.plot(range(len(poolLossCritic)),poolLossCritic,'c-',label='Loss of critic')
@@ -190,11 +238,11 @@ if __name__ == '__main__':
     #plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
     finalValue = "{:.2f}".format(poolEE[-1])
     plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
-    '''
+    
     plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='EE of Brute Force')
     finalValue = "{:.2f}".format(bestEE)
     plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
-    '''
+    
 
     titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
                                     ',nUE='+str(env.U)+\
@@ -216,7 +264,6 @@ if __name__ == '__main__':
     # plot CL/CA Policy
     ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
     filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today) + '.pt'
-    filenameSDDPG = 'data/10.4.2.5.2/'
     ddpg_s.actor = torch.load(filenameSDDPG)
     
     rlBestEE = 0
@@ -239,10 +286,10 @@ if __name__ == '__main__':
     print('bestEE:',bestEE)
     '''
     displayrlBestEE = "{:.2f}".format(rlBestEE)
-    filenamePV = 'data/PolicyVisualization_1ACT_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)+'_'+displayrlBestEE
+    filenamePV = 'data/Visualization_1ACT_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)+'_'+displayrlBestEE
     plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,rlBestCLPolicy_UE,rlBestCAPolicy_BS,displayrlBestEE,filenamePV)
 
-    #filenameBF = 'data/PolicyVisualization_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)
+    #filenameBF = 'data/Visualization_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)
     #plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
     #---------------------------------------------------------------------------------------------
     

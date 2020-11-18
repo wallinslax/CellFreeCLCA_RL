@@ -113,31 +113,8 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_poli
     fig.show()
     fig.canvas.draw()
 
-def genUserRequest(userPreference):
-    zipf_pmf_numerator = [] 
-    for j in range(len(userPreference)):
-        zipf_pmf_numerator.append((j+1)**(-beta))
-    zipf_pmf = list(np.true_divide(zipf_pmf_numerator, sum(zipf_pmf_numerator)))
-    pmf = np.array(zipf_pmf)
-    zipf_pmf_1=np.zeros(len(userPreference))
-    j=0
-    for i in userPreference:
-        zipf_pmf_1[j]=pmf[i]
-        j=j+1
-
-    x = random.random()*sum(zipf_pmf) # U[0,1]
-    k = 0
-    p = pmf[k]
-    
-    while x>p :
-        k += 1
-        p = p+pmf[k]
-
-    index=np.where(zipf_pmf_1==pmf[k])
-    #print(index)
-    return (index[0])
-
 class BS(gym.Env):
+
     def get_statistic(self):
         print('Calculating statistic...')
         EE_sample_list = []
@@ -161,8 +138,32 @@ class BS(gym.Env):
         print('EE_mean = '+str(EE_mean))
         print('EE_std = '+str(EE_std))
         return EE_mean,EE_std
+
+    def genUserRequest(self, userPreference):
+        zipf_pmf_numerator = [] 
+        for j in range(len(userPreference)):
+            zipf_pmf_numerator.append((j+1)**(-beta))
+        zipf_pmf = list(np.true_divide(zipf_pmf_numerator, sum(zipf_pmf_numerator)))
+        pmf = np.array(zipf_pmf)
+        zipf_pmf_1=np.zeros(len(userPreference))
+        j=0
+        for i in userPreference:
+            zipf_pmf_1[j]=pmf[i]
+            j=j+1
+
+        x = random.random()*sum(zipf_pmf) # U[0,1]
+        k = 0
+        p = pmf[k]
         
-    def channel_reset(self):
+        while x>p :
+            k += 1
+            p = p+pmf[k]
+
+        index=np.where(zipf_pmf_1==pmf[k])
+        #print(index)
+        return (index[0])
+
+    def resetChannel(self):
         '''[2] Pair-wise distance'''
         D = np.zeros((self.U,self.B))
         for u in  range(self.U):
@@ -175,11 +176,16 @@ class BS(gym.Env):
 
         '''[4] Small scale fading'''
         h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
-        g = np.transpose(pl*h) 
-        return g
+        self.g = np.transpose(pl*h) 
+        return self.g
 
         h_conj=h.conjugate() 
         h_sqt=(h*h_conj).real
+
+    def resetReq(self):
+        '''[3] Generate User request'''
+        for u in range(self.U):
+            self.Req[u] = self.genUserRequest(self.userPreference[u])
 
     def __init__(self,nBS,nUE,nMaxLink,nFile,nMaxCache,loadENV):
         self.B = nBS # number of BS
@@ -197,7 +203,7 @@ class BS(gym.Env):
             self.u_coordinate = np.random.rand(self.U, 2)-0.5
             sbs_coordinate = np.random.rand(self.B-1, 2)-0.5
             self.bs_coordinate = np.concatenate((np.array([[0,0]]),sbs_coordinate),axis=0) 
-            self.g = self.channel_reset()# received power of each UE
+            self.g = self.resetChannel()# received power of each UE
             '''[2] Generate User Preference'''
             # User Preference is a score list of for each file. Score 0 is the most favorite.
             # i.e. userPreference[0] = [3 2 0 1 4], the most favorate file of UE0 is 2th file, the second favorite file is 3th file
@@ -207,10 +213,9 @@ class BS(gym.Env):
                 np.random.shuffle(seedPreference)
                 self.userPreference[u] = seedPreference
             #print(userPreference)
-            '''[3] Generate User request''' 
+            '''[3] Generate User request'''
             self.Req = np.zeros(self.U,dtype=int)
-            for u in range(self.U):
-                self.Req[u] = genUserRequest(self.userPreference[u])
+            self.resetReq()
             # check topology
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,None,None,0,filename)
             # save Topology
@@ -256,7 +261,8 @@ class BS(gym.Env):
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
+                                self.reqStatistic_norm.flatten(),
+                                self.Req.flatten()])
         ''' 
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
@@ -279,17 +285,18 @@ class BS(gym.Env):
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.dimAct,), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=float("inf"), shape=(len(self.s_),), dtype=np.float32)
 
-    def reset(self):  
+    def reset(self):
+        '''
         self.SINR = np.zeros(self.U)
-        self.action_space.sample()
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
-        
+        '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
+                                self.reqStatistic_norm.flatten(),
+                                self.Req.flatten()])
         '''
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
@@ -413,6 +420,7 @@ class BS(gym.Env):
                 self.Hit[u]=1
         self.Hit_rate = sum(self.Hit)/len(self.Hit)
         #[CS]##############################################################################################################
+        self.updateReqStatistic()
         '''[16] Intra-cluster similarity
         self.ICS = np.zeros(self.B) # intra-cluster similarity of each cluster(BS)
         for b in range(self.B):
@@ -439,7 +447,8 @@ class BS(gym.Env):
         self.s_ = np.hstack([  self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
+                                self.reqStatistic_norm.flatten(),
+                                self.Req.flatten()])
         ''' 
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
