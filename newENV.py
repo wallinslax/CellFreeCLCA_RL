@@ -324,7 +324,6 @@ class BS(gym.Env):
         return self.s_
     
     def nearestClustering_TopNCache(self,cacheMode):
-        
         g_abs = abs(self.g)
         g_absT = g_abs.T
         clustering_policy_UE = []  
@@ -635,10 +634,10 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # Build ENV
-    env = BS(nBS=10,nUE=4,nMaxLink=1,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=1,nFile=5,nMaxCache=2,loadENV = True)
     # env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    for L in range(1,11):
-        env = BS(nBS=10,nUE=4,nMaxLink=L,nFile=5,nMaxCache=2,loadENV = True)
+    for L in range(1,env.B+1):
+        env = BS(nBS=40,nUE=10,nMaxLink=L,nFile=5,nMaxCache=2,loadENV = True)
         nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache(cacheMode='pref')
         #nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache(cacheMode='req')
         nctc_EE = env.calEE(nearnest_clustering_policy_UE,topN_caching_policy_BS)
