@@ -326,11 +326,12 @@ class BS(gym.Env):
     def nearestClustering_TopNCache(self,cacheMode):
         
         g_abs = abs(self.g)
-        #print(g_abs)
+        g_absT = g_abs.T
         clustering_policy_UE = []  
         # kth UE determine the AP set (S_k)     
         for u in range(self.U):
-            bestBS = g_abs[u].argsort()[::-1][:self.L]
+            #print(g_absT[u])
+            bestBS = g_absT[u].argsort()[::-1][:self.L]
             clustering_policy_UE.append(bestBS)
 
         # transform clustering_policy_UE to clustering_policy_BS
@@ -537,17 +538,25 @@ class BS(gym.Env):
             self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
 
         '''[9] System power consumption'''
-        missCounterAP = 0
-        missFileCPU = []
+
+        missFileAP = [ [] for i in range(self.B)]
         for u in range(self.U):
             useBS = clustering_policy_UE[u]
             for bs in useBS:
                 if self.Req[u] not in caching_policy_BS[bs]: #Miss
-                    missCounterAP += 1
-                    missFileCPU.append(self.Req[u])
-        missFileCPU = list(set(missFileCPU)) 
-                     
-        self.P_sys = P_t*self.B + P_bh*missCounterAP + P_bb*len(missFileCPU) # + self.B*P_o_SBS + P_o_MBS 
+                    missFileAP[bs].append(self.Req[u])
+        # Derive F^miss_m for all m
+        missCounterAP = 0
+        for bs in range(self.B):    
+            missFileAP[bs] = list(set(missFileAP[bs]))
+            missCounterAP += len(missFileAP[bs])
+        # Derive union F^miss_m for all m
+        missFileCPU=[]
+        for sublist in missFileAP:
+            for item in sublist:
+                missFileCPU.append(item)
+        missFileCPU = list(set(missFileCPU))     
+        self.P_sys = P_t*self.B + P_bh * missCounterAP + P_bb * len(missFileCPU) # + self.B*P_o_SBS + P_o_MBS 
         
         '''[10] Energy efficiency'''
         self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W

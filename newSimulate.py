@@ -211,7 +211,7 @@ if __name__ == '__main__':
                 kingPoolLossActor = poolLossActor
                 kingPoolLossCritic = poolLossCritic
     '''
-    #trainModel(env,actMode='1act',changeReq=True, changeChannel=False)
+    trainModel(env,actMode='1act',changeReq=True, changeChannel=False)
     #---------------------------------------------------------------------------------------------
     
     # Load Optimal clustering and caching Policy
