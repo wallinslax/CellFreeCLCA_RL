@@ -257,13 +257,18 @@ class BS(gym.Env):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
-        
+        '''
+        self.s_ = np.hstack([   self.SINR,
+                                self.clustering_state.flatten(),
+                                self.caching_state.flatten(),
+                                self.reqStatistic_norm.flatten()])
+        '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-        ''' 
+        '''
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
@@ -291,6 +296,12 @@ class BS(gym.Env):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
+        '''
+        '''
+        self.s_ = np.hstack([   self.SINR,
+                                self.clustering_state.flatten(),
+                                self.caching_state.flatten(),
+                                self.reqStatistic_norm.flatten()])
         '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
@@ -443,13 +454,18 @@ class BS(gym.Env):
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
-        
+        '''
+        self.s_ = np.hstack([   self.SINR,
+                                self.clustering_state.flatten(),
+                                self.caching_state.flatten(),
+                                self.reqStatistic_norm.flatten()])
+        '''
         self.s_ = np.hstack([  self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-        ''' 
+        '''
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),

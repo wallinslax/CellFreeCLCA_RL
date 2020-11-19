@@ -11,6 +11,8 @@ import torch
 import numpy as np
 import time,copy,os,csv,random,pickle
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['agg.path.chunksize'] = 10000
 from numpy.random import randn
 #from random import randint
 from tqdm import tqdm
@@ -26,7 +28,7 @@ LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
           
-MAX_EPISODES = 10**2*5
+MAX_EPISODES = 10**2*10
 MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
@@ -209,7 +211,7 @@ if __name__ == '__main__':
                 kingPoolLossActor = poolLossActor
                 kingPoolLossCritic = poolLossCritic
     '''
-    trainModel(env,actMode='1act',changeReq=True, changeChannel=False)
+    #trainModel(env,actMode='1act',changeReq=True, changeChannel=False)
     #---------------------------------------------------------------------------------------------
     
     # Load Optimal clustering and caching Policy
@@ -231,12 +233,12 @@ if __name__ == '__main__':
     print(max(poolEE))
     plt.cla()
     plt.plot(range(len(poolLossActor)),poolLossActor,'r-',label='Loss of actor')
-    plt.plot(range(len(poolLossCritic)),poolLossCritic,'c-',label='Loss of critic')
+    #plt.plot(range(len(poolLossCritic)),poolLossCritic,'c-',label='Loss of critic')
 
     nXpt=len(poolEE)
     plt.plot(range(nXpt),poolEE,'b-',label='EE of 1 Actors')
     #plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
-    finalValue = "{:.2f}".format(poolEE[-1])
+    finalValue = "{:.2f}".format(max(poolEE))
     plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
     
     plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='EE of Brute Force')
@@ -244,11 +246,7 @@ if __name__ == '__main__':
     plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
     
 
-    titleNmae = 'Energy Efficiency \n nBS='+str(env.B)+ \
-                                    ',nUE='+str(env.U)+\
-                                    ',nMaxLink='+str(env.L)+\
-                                    ',nFile='+str(env.F)+\
-                                    ',nMaxCache='+str(env.N)
+    titleNmae = 'Energy Efficiency \n'+filename
     plt.title(titleNmae) # title
     plt.ylabel("Bits/J") # y label
     plt.xlabel("Iteration") # x label

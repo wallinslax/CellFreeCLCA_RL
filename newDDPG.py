@@ -30,11 +30,9 @@ LR_A = 0.0001    # learning rate for actor
 LR_C = 0.0002    # learning rate for critic
 GAMMA = 0.99     # reward discount
 TAU = 0.01      # soft replacement
-MEMORY_CAPACITY = 10000
 BATCH_SIZE = 128
 n_realizations = 100
 n_LR_update = 1000
-MEM_SIZE = 60000
 SEED = 0 # random seed
 Var = 1 # control exploration
 #np.random.seed(SEED)
@@ -197,7 +195,7 @@ class critic(nn.Module):
         return x
 
 class DDPG:
-    def __init__(self, obs_dim, act_dim, critic_lr = LR_C, actor_lr = LR_A, gamma = GAMMA, batch_size = BATCH_SIZE, memMaxSize = 60000):
+    def __init__(self, obs_dim, act_dim, critic_lr = LR_C, actor_lr = LR_A, gamma = GAMMA, batch_size = BATCH_SIZE, memMaxSize = 10000):
         self.gamma = GAMMA
         self.batch_size = BATCH_SIZE
         self.actor_lr = LR_A
