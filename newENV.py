@@ -165,22 +165,28 @@ class BS(gym.Env):
 
     def resetChannel(self):
         '''[2] Pair-wise distance'''
-        D = np.zeros((self.U,self.B))
+        self.D = np.zeros((self.U,self.B))
         for u in  range(self.U):
             for b in range(self.B):
-                D[u][b] = 1000*np.sqrt(sum((self.u_coordinate[u]-self.bs_coordinate[b])**2)) # km -> m
-        D0=min(D.reshape(self.U*self.B))
-        D/=D0
+                self.D[u][b] = 1000*np.sqrt(sum((self.u_coordinate[u]-self.bs_coordinate[b])**2)) # km -> m
+        D0=min(self.D.reshape(self.U*self.B))
+        self.D/=D0
         '''[3] Large scale fading'''
-        pl = k*np.power(D, -alpha) # Path-loss
+        self.pl = k*np.power(D, -alpha) # Path-loss
 
         '''[4] Small scale fading'''
-        h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
-        self.g = np.transpose(pl*h) 
+        self.h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
+        self.g = np.transpose(pl*self.h) 
         return self.g
 
         h_conj=h.conjugate() 
         h_sqt=(h*h_conj).real
+
+    def timeVariantChannel(self):
+        noise = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B))
+        h_next =  np.sqrt(1 - self.epsilon**2) * self.h + self.epsilon * noise
+        self.h = h_next
+
 
     def resetReq(self):
         '''[3] Generate User request'''
@@ -193,7 +199,7 @@ class BS(gym.Env):
         self.L = nMaxLink # Max Link Capability of UE
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
-        
+        self.epsilon = 0.01
         filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' #+ str(today)
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 

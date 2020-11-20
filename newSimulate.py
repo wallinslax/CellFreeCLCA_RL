@@ -105,8 +105,7 @@ def trainModel(env,actMode,changeReq,changeChannel):
                     env.resetReq()
 
                 if changeChannel:
-                    env.resetChannel()
-                
+                    env.timeVariantChannel()                
                     
 
             if actMode == '2act':
@@ -184,7 +183,7 @@ if __name__ == '__main__':
     # new ENV
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    trainModel(env,actMode='1act',changeReq=False, changeChannel=False)
+    trainModel(env,actMode='1act',changeReq=False, changeChannel=True)
     #---------------------------------------------------------------------------------------------
     
     # Load Optimal clustering and caching Policy
