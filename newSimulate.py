@@ -100,12 +100,11 @@ def trainModel(env,actMode,changeReq,changeChannel):
             '''
             if(step%30 ==0):
                 noiseSigma*=0.995
-                
+            if(step%300 ==0):    
                 if changeReq:
                     env.resetReq()
-
                 if changeChannel:
-                    env.timeVariantChannel()                
+                    env.timeVariantChannel()               
                     
 
             if actMode == '2act':
@@ -181,15 +180,16 @@ def trainModel(env,actMode,changeReq,changeChannel):
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    trainModel(env,actMode='1act',changeReq=False, changeChannel=True)
+    #trainModel(env,actMode='1act',changeReq=False, changeChannel=True)
     #---------------------------------------------------------------------------------------------
     
     # Load Optimal clustering and caching Policy
-    filenameBF = 'data/4.4.2.5.2/BF_4AP_4UE_5File_2Cache_2020-11-10'
+    filenameBF = 'data/4.4.5.2/BF_4AP_4UE_5File_2Cache_2020-11-24'
     with open(filenameBF+'.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+        env, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
     #---------------------------------------------------------------------------------------------
     # Load the plot point 
     #filename = 'data/BF_vs_RL4AP_4UE_1000_2020-11-02'
@@ -207,11 +207,11 @@ if __name__ == '__main__':
     #plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
     finalValue = "{:.2f}".format(max(poolEE))
     plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
-    '''
+    
     plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='EE of Brute Force')
     finalValue = "{:.2f}".format(bestEE)
     plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
-    '''
+    
 
     titleNmae = 'Energy Efficiency(8a) \n'+filename
     plt.title(titleNmae) # title
@@ -242,6 +242,7 @@ if __name__ == '__main__':
     ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
     filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today) + '.pt'
     ddpg_s.actor = torch.load(filenameSDDPG)
+    
     
     rlBestEE = 0
     rlBestCLPolicy_UE=[]

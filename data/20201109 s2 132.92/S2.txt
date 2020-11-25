@@ -1,6 +1,0 @@
-self.s_ = np.hstack([  self.g.real.flatten(),
-                                self.g.imag.flatten(),
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])  

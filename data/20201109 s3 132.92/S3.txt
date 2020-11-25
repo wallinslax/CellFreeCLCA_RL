@@ -1,4 +1,0 @@
-self.s_ = np.hstack([   self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])  

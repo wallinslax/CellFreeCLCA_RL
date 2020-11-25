@@ -172,11 +172,11 @@ class BS(gym.Env):
         D0=min(self.D.reshape(self.U*self.B))
         self.D/=D0
         '''[3] Large scale fading'''
-        self.pl = k*np.power(D, -alpha) # Path-loss
+        self.pl = k*np.power(self.D, -alpha) # Path-loss
 
         '''[4] Small scale fading'''
         self.h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
-        self.g = np.transpose(pl*self.h) 
+        self.g = np.transpose(self.pl * self.h) 
         return self.g
 
         h_conj=h.conjugate() 
@@ -186,7 +186,6 @@ class BS(gym.Env):
         noise = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B))
         h_next =  np.sqrt(1 - self.epsilon**2) * self.h + self.epsilon * noise
         self.h = h_next
-
 
     def resetReq(self):
         '''[3] Generate User request'''
@@ -203,7 +202,7 @@ class BS(gym.Env):
         filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' #+ str(today)
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 
-                self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req = pickle.load(f)
+                self.bs_coordinate, self.u_coordinate, self.pl, self.h,  self.g, self.userPreference, self.Req = pickle.load(f)
         else:
             '''[1] SBS/ UE distribution''' 
             self.u_coordinate = np.random.rand(self.U, 2)-0.5
@@ -226,7 +225,7 @@ class BS(gym.Env):
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,None,None,0,filename)
             # save Topology
             with open(filename + '.pkl', 'wb') as f: 
-                pickle.dump([self.bs_coordinate, self.u_coordinate, self.g, self.userPreference, self.Req], f)
+                pickle.dump([self.bs_coordinate, self.u_coordinate, self.pl, self.h, self.g, self.userPreference, self.Req], f)
             #self.EE_mean,self.EE_std,self.CS_mean,self.CS_std = self.get_statistic()
         '''
         # Debug: self.userPreference
@@ -329,7 +328,7 @@ class BS(gym.Env):
         '''
         return self.s_
     
-    def nearestClustering_TopNCache(self,cacheMode):
+    def snrCL_popCA(self,cacheMode):
         g_abs = abs(self.g)
         g_absT = g_abs.T
         clustering_policy_UE = []  
@@ -380,7 +379,34 @@ class BS(gym.Env):
             caching_policy_BS = estCacheTopN
 
         return clustering_policy_UE,caching_policy_BS
-        
+
+    def getBestEE_snrCL_popCA(self,cacheMode='pref',isSave=False,isPlot=False):
+        # Derive Policy: snrCL_popCA
+        snrCL_popCA_EE_Array=[-1]
+        for self.L in range(1,self.B+1):
+            snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
+            #snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode='req')
+            snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+            print('self.L=',self.L,',snrCL_popCA_EE=',snrCL_popCA_EE)
+            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)   
+        self.L = np.argmax(snrCL_popCA_EE_Array)
+        snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
+        Best_snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+        if isSave:
+            # Save the whole environment
+            filenameNCTC = 'data/snrCL_popCA_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.L) + 'L_' + str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
+            with open(filenameNCTC+'.pkl', 'wb') as f:  
+                pickle.dump([self, Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS], f)
+            # Load the whole environment
+            with open(filenameNCTC+'.pkl','rb') as f: 
+                self, Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = pickle.load(f)
+        if isPlot:
+            # Plot
+            filenameNCTC = 'data/Visualization_SNR+POP_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.L) + 'L_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
+            plot_UE_BS_distribution_Cache(self.bs_coordinate, self.u_coordinate, self.Req, snrCL_policy_UE, popCA_policy_BS, Best_snrCL_popCA_EE,filenameNCTC)
+            return Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS
+
+
     def updateReqStatistic(self):
         '''[10] Content Request Statistic of each UE'''
         for u in range(self.U):
@@ -568,7 +594,7 @@ class BS(gym.Env):
         self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
         return self.EE
 
-    def bruteForce(self):
+    def getOptEE_BF(self,isSave=True,isPlot=True):
         print("this is brute force for EE")
         # generate all posible clustering_policy_UE
         choiceBS = []
@@ -619,7 +645,19 @@ class BS(gym.Env):
                     bestEE = subBestEE
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
-        
+        if isSave:
+            # Save the whole environment with Optimal Clustering and Optimal Caching
+            filenameBF = 'data/BF_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
+            with open(filenameBF+'.pkl', 'wb') as f:  
+                pickle.dump([self, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
+            # Load the whole environment with Optimal Clustering and Optimal Caching   
+            filenameBF = 'data/BF_4AP_4UE_5File_2Cache_2020-11-24'
+            with open(filenameBF+'.pkl','rb') as f: 
+                self, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+        if isPlot:
+            # Plot
+            filenameBF = 'data/Visualization_BF_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
+            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
         
 
         return bestEE, opt_clustering_policy_UE, opt_caching_policy_BS
@@ -640,52 +678,11 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # Build ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=1,nFile=5,nMaxCache=2,loadENV = True)
-    # env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    for L in range(1,env.B+1):
-        env = BS(nBS=40,nUE=10,nMaxLink=L,nFile=5,nMaxCache=2,loadENV = True)
-        nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache(cacheMode='pref')
-        #nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache(cacheMode='req')
-        nctc_EE = env.calEE(nearnest_clustering_policy_UE,topN_caching_policy_BS)
-        print('L=',L,',nctc_EE=',nctc_EE)
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #------------------------------------------------------------------------------------------------
-    # Derive Policy: nearestClustering_TopNCache
-    env = BS(nBS=10,nUE=4,nMaxLink=4,nFile=5,nMaxCache=2,loadENV = True)
-    nearnest_clustering_policy_UE, topN_caching_policy_BS = env.nearestClustering_TopNCache(cacheMode='pref')
-    nctc_EE = env.calEE(nearnest_clustering_policy_UE,topN_caching_policy_BS)
-    
-    # Save the whole environment
-    filenameNCTC = 'data/nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+ str(env.L) + 'L_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today)
-    with open(filenameNCTC+'.pkl', 'wb') as f:  
-        pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS], f)
-    # Load the whole environment
-    with open(filenameNCTC+'.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, nctc_EE, nearnest_clustering_policy_UE, topN_caching_policy_BS = pickle.load(f)
-    
-    # Plot
-    filenameNCTC = 'data/PolicyVisualized_nearCL+TopNCA_'+str(env.B)+'AP_'+str(env.U)+'UE_'+ str(env.L) + 'L_'+ str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today)
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,nearnest_clustering_policy_UE,topN_caching_policy_BS,nctc_EE,filenameNCTC)
-    print('nctc_EE=',nctc_EE)
-    print('nearnest_clustering_policy_UE=',nearnest_clustering_policy_UE)
-    print('topN_caching_policy_BS=',topN_caching_policy_BS)
+    # Derive Policy: snrCL_popCA
+    Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.bruteForce()
-    
-    # Save the whole environment with Best Clustering and Best Caching
-    filenameBF = 'data/BF_'+str(env.B)+'AP_'+str(env.U)+'UE_'+ str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today)
-    with open(filenameBF+'.pkl', 'wb') as f:  
-        pickle.dump([env.bs_coordinate, env.u_coordinate, env.g, env.userPreference, env.Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
-    
-    # Load the whole environment with Best Clustering and Best Caching   
-    filenameBF = 'data/BF_4AP_4UE_5File_2Cache_2020-11-10'
-    with open(filenameBF+'.pkl','rb') as f: 
-        bs_coordinate, u_coordinate , g, userPreference, Req, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-    
-    # Plot
-    filenameBF = 'data/PolicyVisualized_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_'+ str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today)
-    plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
-    print('bestEE=',bestEE)
-    print('opt_clustering_policy_UE=',opt_clustering_policy_UE)
-    print('opt_caching_policy_BS=',opt_caching_policy_BS)
+    bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.getOptEE_BF(isSave=False,isPlot=False)
     #------------------------------------------------------------------------------------------------
