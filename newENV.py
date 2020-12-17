@@ -201,7 +201,7 @@ class BS(gym.Env):
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
         self.epsilon = 0.01
-        filename = 'data/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' #+ str(today)
+        filename = 'data/Topology/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' #+ str(today)
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 
                 self.bs_coordinate, self.u_coordinate, self.pl, self.h,  self.g, self.userPreference, self.Req = pickle.load(f)
@@ -232,9 +232,15 @@ class BS(gym.Env):
         '''
         # Debug: self.userPreference
         print('self.userPreference[0]=',self.userPreference[0])
+        cumulate = np.zeros(self.F)
         for i in range(100):
-            print(genUserRequest(self.userPreference[0]))
+            req = self.genUserRequest(self.userPreference[0])
+            print(req)
+            cumulate[req]+=1
+        print('self.userPreference[0]=',self.userPreference[0])
+        print(cumulate)
         '''
+        
         self.EE_mean = 0
         self.EE_std = 1
         self.CS_mean = 0
@@ -264,7 +270,7 @@ class BS(gym.Env):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
-        '''
+
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
@@ -275,7 +281,7 @@ class BS(gym.Env):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-        '''
+
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
@@ -304,7 +310,7 @@ class BS(gym.Env):
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
         '''
-        '''
+
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
@@ -315,7 +321,7 @@ class BS(gym.Env):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-        '''
+
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
@@ -329,7 +335,6 @@ class BS(gym.Env):
                                 self.Req.flatten()]) 
         '''
         return self.s_
-    
 
     def updateReqStatistic(self):
         '''[10] Content Request Statistic of each UE'''
@@ -410,7 +415,7 @@ class BS(gym.Env):
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
-        '''
+
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
@@ -421,7 +426,7 @@ class BS(gym.Env):
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-        '''
+
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
@@ -510,9 +515,11 @@ class BS(gym.Env):
         for sublist in missFileAP:
             for item in sublist:
                 missFileCPU.append(item)
-        missFileCPU = list(set(missFileCPU))     
-        self.P_sys = P_t*self.B + P_bh * missCounterAP + P_bb * len(missFileCPU) # + self.B*P_o_SBS + P_o_MBS 
-        
+        missFileCPU = list(set(missFileCPU))
+        missCounterCPU = len(missFileCPU)
+        self.P_sys = P_t*self.B + P_bh * missCounterAP + P_bb * missCounterCPU # + self.B*P_o_SBS + P_o_MBS 
+        self.missCounterAP = missCounterAP
+        self.missCounterCPU = missCounterCPU
         '''[10] Energy efficiency'''
         self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
         self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
@@ -684,7 +691,7 @@ if __name__ == "__main__":
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: snrCL_popCA
-    #Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
+    Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
     #bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.getOptEE_BF(isSave=False,isPlot=False)
