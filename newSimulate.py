@@ -56,9 +56,14 @@ def plotMetric(poolEE,poolBestEE):
 
 def plotEEFamily(poolEE,poolThroughput,poolPsys):
     plt.cla()
+    plt.plot(poolEE,label='poolEE')
+    plt.plot(poolThroughput,label='poolThroughput',alpha=0.7)
+    plt.plot(poolPsys,label='poolPsys',alpha=0.7)
+    '''
     plt.plot(poolEE,'b-',label='poolEE')
     plt.plot(poolThroughput,'r-',label='poolThroughput',alpha=0.7)
     plt.plot(poolPsys,'g-',label='poolPsys',alpha=0.7)
+    '''
     plt.grid()
     plt.legend()
     fig = plt.gcf()
@@ -87,8 +92,8 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
     if(loadActor):
         ddpg_s.actor = torch.load(modelName)
 
-    ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL)
-    ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA)
+    #ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL)
+    #ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA)
     #ddpg_cl.actor = torch.load('CellFreeCLCA_RL/data/cl_mddpg_actor.pt')
     #ddpg_ca.actor = torch.load('CellFreeCLCA_RL/data/ca_mddpg_actor.pt')
     #---------------------------------------------------------------------------------------------
@@ -109,16 +114,26 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
     iteraion = 0
     countChangeReq = 0
     countChangeChannel = 0
+
     poolEE=[]
     poolThroughput = []
     poolPsys = []
+    poolmissCounterAP = []
+    poolmissCounterCPU = []
+
+    poolSP_EE=[]
+    poolSP_Throughput=[]
+    poolSP_Psys = []
+    poolSP_missCounterAP = []
+    poolSP_missCounterCPU = []
+
     poolHR=[]
     poolLossActor = []
     poolLossCritic = []
     poolVarLossCritic = []
     poolVarEE = []
-    poolmissCounterAP = []
-    poolmissCounterCPU = []
+    
+
     for ep in tqdm(range(MAX_EPISODES)):
         ep_reward = 0
         obs = env.reset()# Get initial state
@@ -156,6 +171,14 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
             poolPsys.append(env.P_sys/1000)
             poolmissCounterAP.append(env.missCounterAP)
             poolmissCounterCPU.append(env.missCounterCPU)
+
+            Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
+            poolSP_EE.append(Best_snrCL_popCA_EE)
+            poolSP_Throughput.append(env.Throughput)
+            poolSP_Psys.append(env.P_sys/1000)
+            poolSP_missCounterAP.append(env.missCounterAP)
+            poolSP_missCounterCPU.append(env.missCounterCPU)
+
             HR = info["HR"]
             poolHR.append(HR)
 
@@ -336,6 +359,7 @@ def getEE_RL(env,ddpg,isPlot=False,isEPS=False):
 
 if __name__ == '__main__':
     # new ENV
+    #env = BS(nBS=100,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
