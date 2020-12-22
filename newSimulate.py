@@ -54,7 +54,7 @@ def plotMetric(poolEE,poolBestEE):
     fig.canvas.draw()
     plt.pause(0.001)
 
-def plotEEFamily(poolEE,poolThroughput,poolPsys):
+def plotEEFamily(poolEE,poolThroughput,poolPsys,plotName):
     plt.cla()
     plt.plot(poolEE,label='poolEE')
     plt.plot(poolThroughput,label='poolThroughput',alpha=0.7)
@@ -67,9 +67,9 @@ def plotEEFamily(poolEE,poolThroughput,poolPsys):
     plt.grid()
     plt.legend()
     fig = plt.gcf()
-    fig.savefig('data/'+ 'EE_Family' +'.png', format='png',dpi=200)
+    fig.savefig('data/'+ 'EE_Family_' + plotName +'.png', format='png',dpi=200)
 
-def plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU):
+def plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU,plotName):
     plt.cla()
     plt.plot(poolPsys,'b-',label='poolPsys')
     plt.plot(poolmissCounterAP,'r-',label='poolmissCounterAP',alpha=0.7)
@@ -77,7 +77,7 @@ def plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU):
     plt.grid()
     plt.legend()
     fig = plt.gcf()
-    fig.savefig('data/'+ 'Psys_Family' +'.png', format='png',dpi=200)
+    fig.savefig('data/'+ 'Psys_Family_'+ plotName +'.png', format='png',dpi=200)
 
 def plotlist(listA,listName): # for debugging.
     plt.cla()
@@ -172,13 +172,15 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
             poolmissCounterAP.append(env.missCounterAP)
             poolmissCounterCPU.append(env.missCounterCPU)
 
+            
             Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
             poolSP_EE.append(Best_snrCL_popCA_EE)
-            poolSP_Throughput.append(env.Throughput)
+            poolSP_Throughput.append(sum(env.Throughput))
             poolSP_Psys.append(env.P_sys/1000)
             poolSP_missCounterAP.append(env.missCounterAP)
             poolSP_missCounterCPU.append(env.missCounterCPU)
-
+            
+            
             HR = info["HR"]
             poolHR.append(HR)
 
@@ -215,7 +217,7 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
 
                 if (poolVarLossCritic[-1] < 10) and (poolVarEE[-1] < 10) and changeReq:
                     env.resetReq()
-                    print(env.Req)
+                    print('**Change Request: ',env.Req)
                     countChangeReq+=1
                     noiseSigma = 1 # reset explore
 
@@ -227,10 +229,12 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
                 countChangeChannel+=1
 
             if (iteraion % 1000) == 0:#Mectric Snapshot
-                #print(finalVar)
+                plotEEFamily(poolEE,poolThroughput,poolPsys,'RL')
+                plotEEFamily(poolSP_EE,poolSP_Throughput,poolSP_Psys,'SP')
+                plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU,'RL')
+                plotPsysFamily(poolSP_Psys,poolSP_missCounterAP,poolSP_missCounterCPU,'SP')
+
                 plotlist(poolLossCritic,'LossCritic')
-                plotEEFamily(poolEE,poolThroughput,poolPsys)
-                plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU)
                 plotlist(poolHR,'poolHR')
                 Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
                 if poolEE[-1]>Best_snrCL_popCA_EE:
@@ -361,7 +365,7 @@ if __name__ == '__main__':
     # new ENV
     #env = BS(nBS=100,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
     filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
     
