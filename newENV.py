@@ -450,6 +450,7 @@ class BS(gym.Env):
         return observation, reward, done, info
 
     def calEE(self,clustering_policy_UE,caching_policy_BS):
+
         '''[1] clustering_policy_BS'''
         clustering_policy_BS = []
         for b in range(self.B):
@@ -458,6 +459,7 @@ class BS(gym.Env):
                 if b in clustering_policy_UE[u]:
                     competeUE.append(u) #the UE set in b-th cluster   
             clustering_policy_BS.append(competeUE)
+        
 
         '''[4] rho_b'''
         self.rho = np.zeros(self.B)
@@ -472,9 +474,15 @@ class BS(gym.Env):
         '''[5] received power'''
         self.P_r = np.zeros(self.U)
         for u in range(self.U):
-            for b in clustering_policy_UE[u]:
+            for b in clustering_policy_UE[u]: #S_u = clustering_policy_UE[u]
                 self.P_r[u] += np.sqrt(self.rho[b]) * np.power(abs(self.g[b][u]),2)
             self.P_r[u] = np.power(self.P_r[u],2)
+
+        '''[] Activated BS set: S = Union S_u'''
+        activatedBS =[]
+        for u in range(self.U):# S_u = clustering_policy_UE[u]
+            activatedBS.extend(clustering_policy_UE[u])
+        activatedBS = list(set(activatedBS))
 
         '''[6] Interference'''
         self.I = np.zeros(self.U)
@@ -483,11 +491,12 @@ class BS(gym.Env):
             other_u.remove(u)
             #print(other_u)
             for uu in other_u:
-                sum_b = 0
-                for b in range(self.U):
+                sum_b = 0  
+                #for b in range(self.B): # set S != all BS
+                for b in activatedBS:
                     #chk = self.g[b][u] * self.g[b][uu].conjugate() 
                     #print(chk)
-                    sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u]*self.g[b][uu].conjugate()
+                    sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u] * self.g[b][uu].conjugate()
                 self.I[u] = self.I[u] + np.power(abs(sum_b),2)
         
         '''[7] SINR/ [8]Throughput of UE'''

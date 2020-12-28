@@ -17,6 +17,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from torchviz import make_dot
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 
 #####################  hyper parameters  ####################
 # DDPG Parameter
@@ -126,21 +129,15 @@ class actor(nn.Module):
 
         self.state_dim = input_size
         self.action_dim = output_size
-        self.h1_dim = 2*input_size###
-        self.h2_dim = 2*input_size
+        self.h1_dim = int((input_size+output_size)/2)###.
+        #self.h1_dim = 2*input_size###
 
         self.fc1 = nn.Linear(self.state_dim, self.h1_dim)
         torch.nn.init.xavier_uniform_(self.fc1.weight)
         self.bn1 = nn.BatchNorm1d(self.h1_dim)###
         self.ln1 = nn.LayerNorm(self.h1_dim)
-
-        self.fc2 = nn.Linear(self.h1_dim, self.h2_dim)
+        self.fc2 = nn.Linear(self.h1_dim, self.action_dim)
         torch.nn.init.xavier_uniform_(self.fc2.weight)
-        self.bn2 = nn.BatchNorm1d(self.h2_dim)
-        self.ln2 = nn.LayerNorm(self.h2_dim)
-
-        self.fc3 = nn.Linear(self.h2_dim, self.action_dim)
-        torch.nn.init.xavier_uniform_(self.fc3.weight)
 
     def forward(self, state):        
         #x = F.relu(self.bn1(self.fc1(state)))
@@ -148,16 +145,9 @@ class actor(nn.Module):
         x = self.fc1(state)
         x = self.bn1(x)
         x = self.ln1(x)
-        #x = F.relu(x)
-        x = F.tanh(x)
-
-        x = self.fc2(x)
-        x = self.bn2(x)
-        x = self.ln2(x)
-        #x = F.relu(x)
         x = torch.tanh(x)
+        x = self.fc2(x)
 
-        x = self.fc3(x)
         #action = F.relu(x)
         action = torch.tanh(x)
         #action = F.softmax(x)
@@ -261,7 +251,10 @@ class DDPG:
         a += noise
         ''' 
         # clipping --> around
-        #a = np.around(np.clip(a, 0, 1))            
+        #a = np.around(np.clip(a, 0, 1))  
+        # 
+        #make_dot(self.actor(inp))   
+        #writer.add_graph(self.actor, inp)
         return action
 
     def addMemory(self, ep):

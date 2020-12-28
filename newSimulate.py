@@ -2,12 +2,16 @@
 # -*- coding: utf-8 -*-
 # Proprietary Design
 #import robot_ghliu
+from newDDPG import actor
 from newDDPG import DDPG
 from newENV import BS
 from newENV import plot_UE_BS_distribution_Cache
 # Public Lib
 from torch.autograd import Variable
 import torch
+from torchviz import make_dot
+from torch.utils.tensorboard import SummaryWriter
+#writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 import numpy as np
 import time,copy,os,csv,random,pickle
 import matplotlib.pyplot as plt
@@ -33,6 +37,10 @@ MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
 #####################################
+#def drewNetwork(model,input):
+
+
+
 def plotMetric(poolEE,poolBestEE):
     xScale = 100
     x = range( len(poolEE[-xScale:]) )
@@ -91,6 +99,10 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
     ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
     if(loadActor):
         ddpg_s.actor = torch.load(modelName)
+    print('Actor Network')
+    print(ddpg_s.actor)
+    print('Critic Network')
+    print(ddpg_s.critic)
 
     #ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL)
     #ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA)
@@ -162,7 +174,7 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
             elif actMode == '1act':
                 noise = np.random.normal(mu, noiseSigma,size=env.dimAct)
                 action = ddpg_s.action(obs,noise)
-        
+            
             # take action to ENV
             obs2, reward, done, info = env.step(action)
             EE = reward
@@ -171,15 +183,6 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
             poolPsys.append(env.P_sys/1000)
             poolmissCounterAP.append(env.missCounterAP)
             poolmissCounterCPU.append(env.missCounterCPU)
-
-            
-            Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
-            poolSP_EE.append(Best_snrCL_popCA_EE)
-            poolSP_Throughput.append(sum(env.Throughput))
-            poolSP_Psys.append(env.P_sys/1000)
-            poolSP_missCounterAP.append(env.missCounterAP)
-            poolSP_missCounterCPU.append(env.missCounterCPU)
-            
             
             HR = info["HR"]
             poolHR.append(HR)
@@ -204,7 +207,6 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
                     lossActor, lossCritic = ddpg_s.train()
                     poolLossActor.append(lossActor.item())
                     poolLossCritic.append(lossCritic.item())
-
             obs = obs2
             ep_reward += reward
 
@@ -229,17 +231,33 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
                 countChangeChannel+=1
 
             if (iteraion % 1000) == 0:#Mectric Snapshot
+                Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
+                if poolEE[-1]>Best_snrCL_popCA_EE:
+                    print('poolEE win!',poolEE[-1], 'Best_snrCL_popCA_EE loss QQ', Best_snrCL_popCA_EE)
+                else:
+                    if (iteraion % 20000) == 0:
+                        noiseSigma = 1 # reset explore
+                '''
+                poolSP_EE = poolSP_EE + np.ones(1000)*Best_snrCL_popCA_EE
+                poolSP_Throughput = poolSP_Throughput + np.ones(1000)*sum(env.Throughput)
+                poolSP_Psys = poolSP_Psys + np.ones(1000)*env.P_sys/1000
+                poolSP_missCounterAP = poolSP_missCounterAP + np.ones(1000)*env.missCounterAP
+                poolSP_missCounterCPU = poolSP_missCounterCPU + np.ones(1000)*env.missCounterCPU
+                '''
+                poolSP_EE.extend(np.ones(1000)*Best_snrCL_popCA_EE)
+                poolSP_Throughput.extend(np.ones(1000)*sum(env.Throughput))
+                poolSP_Psys.extend(np.ones(1000)*env.P_sys/1000)
+                poolSP_missCounterAP.extend(np.ones(1000)*env.missCounterAP)
+                poolSP_missCounterCPU.extend(np.ones(1000)*env.missCounterCPU)
+                
                 plotEEFamily(poolEE,poolThroughput,poolPsys,'RL')
                 plotEEFamily(poolSP_EE,poolSP_Throughput,poolSP_Psys,'SP')
                 plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU,'RL')
                 plotPsysFamily(poolSP_Psys,poolSP_missCounterAP,poolSP_missCounterCPU,'SP')
 
                 plotlist(poolLossCritic,'LossCritic')
+                plotlist(poolLossActor,'LossActor')
                 plotlist(poolHR,'poolHR')
-                Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
-                if poolEE[-1]>Best_snrCL_popCA_EE:
-                    print('poolEE win!',poolEE[-1], 'Best_snrCL_popCA_EE loss QQ', Best_snrCL_popCA_EE)
-
                 
         #if ep_reward>28500:
         #    print('\nEpisode:{} Reward:{} Explore:{}'.format(ep,ep_reward,noiseSigma))
@@ -270,7 +288,7 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,modelName):
     with open(filename+'.pkl', 'wb') as f:  
         pickle.dump([env, poolEE,poolThroughput,poolPsys,poolHR,poolLossActor,poolLossCritic], f)
 
-def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,isLoadBF=False,isEPS=False):
+def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,isEPS=False):
     with open(filename+'.pkl','rb') as f: 
         env, poolEE,poolThroughput,poolPsys,poolHR,poolLossActor,poolLossCritic = pickle.load(f)
     #---------------------------------------------------------------------------------------------
@@ -302,7 +320,7 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,
         finalValue = "{:.2f}".format(max(poolEE))
         plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
         #---------------------------------------------------------------------------------------------
-        if isLoadBF:
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
             # Load Optimal clustering and caching Policy
             filenameBF = 'data/4.4.5.2/BF_4AP_4UE_5File_2Cache_2020-11-24'
             with open(filenameBF+'.pkl','rb') as f: 
@@ -364,13 +382,13 @@ def getEE_RL(env,ddpg,isPlot=False,isEPS=False):
 if __name__ == '__main__':
     # new ENV
     #env = BS(nBS=100,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
     #env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
     filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
     
     while(True):
-        trainModel(env,actMode='1act',changeReq=True, changeChannel=True, loadActor = False, modelName= filenameSDDPG)
+        trainModel(env,actMode='1act',changeReq=False, changeChannel=False, loadActor = False, modelName= filenameSDDPG)
         filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
         ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
         ddpg_s.actor = torch.load(filenameSDDPG)
@@ -382,7 +400,7 @@ if __name__ == '__main__':
     #---------------------------------------------------------------------------------------------
     # Show Training Phase 
     filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
-    plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isLoadBF=True,isEPS=False)
+    plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isEPS=False)
     #---------------------------------------------------------------------------------------------
     # Show Testing Phase (RL vs Benchmark1)
     filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
