@@ -380,6 +380,8 @@ def getEE_RL(env,ddpg,isPlot=False,isEPS=False):
     return rlBestEE,rlBestCLPolicy_UE,rlBestCAPolicy_BS
 
 if __name__ == '__main__':
+    filename = 'data/40.10.50.5/1ACT_40AP_10UE_50File_5Cache_100000_Train_2020-12-25'
+    plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isEPS=False)
     # new ENV
     #env = BS(nBS=100,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
@@ -400,6 +402,7 @@ if __name__ == '__main__':
     #---------------------------------------------------------------------------------------------
     # Show Training Phase 
     filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
+    filename = 'data/1ACT_40AP_10UE_50File_5Cache_100000_Train_2020-12-25'
     plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isEPS=False)
     #---------------------------------------------------------------------------------------------
     # Show Testing Phase (RL vs Benchmark1)
