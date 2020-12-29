@@ -36,7 +36,6 @@ F = 5 # number of total files
 N = 2 # capacity of BSs
 '''
 P_t = 10 # transmit power of SBS 10dbm = 10mW
-P_SBS = 10 # transmit power of SBS 10dbm = 10mW
 P_MBS = 31.6 # transmit power of MBS 15dbm = 31.6mW
 P_l = 20 # data retrieval power from local cache = 20mW
 P_bh = 500 # data retrieval power from backhaul = 500mW (AP--CPU)
@@ -44,6 +43,9 @@ P_bb = 500 # data retrieval power from backbone = 500mW (CPU--Backbone)
 P_o_SBS = 1500 # operational power of SBS = 1500mW
 P_o_MBS = 2500 # operational power of MBS =2500mW
 n_var = 2*(10**-13) # thermal noise power =  -127 (dBm) =1.995262315e-13(mW)
+# https://www.everythingrf.com/rf-calculators/noise-power-calculator
+# 25C/ 50 kHz => Noise Power -126.86714407 dBm
+# 25C/ 6 GHz => Noise Power -81.53951698 dBm = 7.02e-12(mW)
 #####################################
 '''
 SEED = 0
@@ -117,6 +119,10 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_poli
 class BS(gym.Env):
 
     def get_statistic(self):
+        self.EE_mean = 0
+        self.EE_std = 1
+        self.CS_mean = 0
+        self.CS_std = 1
         print('Calculating statistic...')
         EE_sample_list = []
         CS_sample_list = []
@@ -177,11 +183,12 @@ class BS(gym.Env):
 
         '''[4] Small scale fading'''
         self.h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
-        self.g = np.transpose(self.pl * self.h) 
-        return self.g
-
-        h_conj=h.conjugate() 
+        self.g = np.transpose(self.pl * self.h) # self.U X self.B
+        #return self.g
+        h_conj=self.h.conjugate() 
+        h_sqt=self.h*h_conj
         h_sqt=(h*h_conj).real
+        
 
     def timeVariantChannel(self):
         noise = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B))
@@ -209,9 +216,10 @@ class BS(gym.Env):
             '''[1] SBS/ UE distribution''' 
             self.u_coordinate = np.random.rand(self.U, 2)-0.5
             sbs_coordinate = np.random.rand(self.B-1, 2)-0.5
-            self.bs_coordinate = np.concatenate((np.array([[0,0]]),sbs_coordinate),axis=0) 
-            self.g = self.resetChannel()# received power of each UE
-            '''[2] Generate User Preference'''
+            self.bs_coordinate = np.concatenate((np.array([[0,0]]),sbs_coordinate),axis=0)
+            '''[2] Generate g_mk g_bu''' 
+            self.resetChannel() 
+            '''[3] Generate User Preference'''
             # User Preference is a score list of for each file. Score 0 is the most favorite.
             # i.e. userPreference[0] = [3 2 0 1 4], the most favorate file of UE0 is 2th file, the second favorite file is 3th file
             self.userPreference = np.zeros((self.U,self.F),dtype=int)
@@ -220,7 +228,7 @@ class BS(gym.Env):
                 np.random.shuffle(seedPreference)
                 self.userPreference[u] = seedPreference
             #print(userPreference)
-            '''[3] Generate User request'''
+            '''[4] Generate User request'''
             self.Req = np.zeros(self.U,dtype=int)
             self.resetReq()
             # check topology
@@ -240,13 +248,7 @@ class BS(gym.Env):
         print('self.userPreference[0]=',self.userPreference[0])
         print(cumulate)
         '''
-        
-        self.EE_mean = 0
-        self.EE_std = 1
-        self.CS_mean = 0
-        self.CS_std = 1
         self.done = False
-        
         '''[9] popular method to determine clustering and caching policy'''
         self.nearestClustering = np.zeros([self.U,self.B],dtype=int)
         self.optCacheTopN = np.zeros([self.B,self.N],dtype=int)
@@ -255,9 +257,9 @@ class BS(gym.Env):
         self.reqStatistic = np.zeros([self.U,self.F],dtype=int)
         self.userSimilarity = np.zeros([self.U,self.U],dtype=int)
 
-        '''[13] System power consumption'''
+        '''[11] System power consumption'''
         self.P_sys = 0
-        '''[14] Energy efficiency'''
+        '''[12] Energy efficiency'''
         self.EE = 0 
         '''[15] Content request profile similarity'''
         self.ueSimilarity = np.zeros([self.U, self.U]) 
@@ -380,7 +382,7 @@ class BS(gym.Env):
             for u in range(self.U):
                 self.Req[u] = genUserRequest(self.userPreference[u])
         '''
-        '''[3] Hit event'''
+        '''[13] Hit event'''
         self.Hit = np.zeros(self.U)
         for u in range(self.U):
             useBS = clustering_policy_UE[u]
@@ -405,7 +407,7 @@ class BS(gym.Env):
         self.CS = sum(self.ICS)/self.B
         self.CS_norm = (self.CS - self.CS_mean)/self.CS_std # Z-score normalization'''
         ###############################################################################################################
-        '''[18] State'''
+        '''[19] State'''
         #convert culstering policy to binary form
         clustering_state = np.zeros([self.U,self.B])
         for u in range(self.U):
@@ -440,7 +442,7 @@ class BS(gym.Env):
                                 self.Req.flatten()])  
         ''' 
         
-        '''[19] Whether episode done'''
+        '''[20] Whether episode done'''
         observation = self.s_
         reward = self.EE
         done = self.done
@@ -450,8 +452,9 @@ class BS(gym.Env):
         return observation, reward, done, info
 
     def calEE(self,clustering_policy_UE,caching_policy_BS):
-
-        '''[1] clustering_policy_BS'''
+        # S_k = S_u = clustering_policy_UE
+        # C_m = C_b = clustering_policy_BS
+        '''[5] clustering_policy_BS'''
         clustering_policy_BS = []
         for b in range(self.B):
             competeUE = []
@@ -460,78 +463,69 @@ class BS(gym.Env):
                     competeUE.append(u) #the UE set in b-th cluster   
             clustering_policy_BS.append(competeUE)
         
-
-        '''[4] rho_b'''
+        '''[6] rho_b'''
         self.rho = np.zeros(self.B)
         for b in range(self.B):
             competeUE = clustering_policy_BS[b]
-            #print(self.g[b][competeUE])
-            #print(sum( np.power(abs(self.g[b][competeUE]),2) ))
             if len(competeUE) != 0:
-                self.rho[b] = P_SBS / sum( np.power(abs(self.g[b][competeUE]),2) )
+                #print(self.g[b][competeUE])
+                #print(sum( np.power(abs(self.g[b][competeUE]),2) ))
+                self.rho[b] = P_t / sum( np.power(abs(self.g[b][competeUE]),2) )
             #print( self.rho[b] )
         
-        '''[5] received power'''
+        '''[7] received power P_r'''
         self.P_r = np.zeros(self.U)
         for u in range(self.U):
             for b in clustering_policy_UE[u]: #S_u = clustering_policy_UE[u]
+                #print(np.power(abs(self.g[b][u]),2))
+                #print(self.g[b][u]*self.g[b][u].conjugate())
                 self.P_r[u] += np.sqrt(self.rho[b]) * np.power(abs(self.g[b][u]),2)
             self.P_r[u] = np.power(self.P_r[u],2)
 
-        '''[] Activated BS set: S = Union S_u'''
-        activatedBS =[]
-        for u in range(self.U):# S_u = clustering_policy_UE[u]
-            activatedBS.extend(clustering_policy_UE[u])
-        activatedBS = list(set(activatedBS))
+        '''[8] Activated BS set: S = Union S_u'''
+        activatedBS = np.nonzero(self.rho)[0]
 
-        '''[6] Interference'''
+        '''[9] Interference I'''
         self.I = np.zeros(self.U)
         for u in range(self.U):
             other_u = list(range(self.U))
             other_u.remove(u)
-            #print(other_u)
             for uu in other_u:
-                sum_b = 0  
-                #for b in range(self.B): # set S != all BS
-                for b in activatedBS:
-                    #chk = self.g[b][u] * self.g[b][uu].conjugate() 
+                sum_b = 0
+                for b in activatedBS:# set S != all BS
+                    #chk = self.g[b][u] * self.g[b][uu].conjugate()
                     #print(chk)
                     sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u] * self.g[b][uu].conjugate()
                 self.I[u] = self.I[u] + np.power(abs(sum_b),2)
         
-        '''[7] SINR/ [8]Throughput of UE'''
-        self.SINR = np.zeros(self.U) 
+        '''[10] SINR/ [8]Throughput of UE'''
+        self.SINR = np.zeros(self.U)
         self.Throughput = np.zeros(self.U)
         for u in range(self.U):
             self.SINR[u] = self.P_r[u]/(self.I[u] + n_var)
             self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
 
-        '''[9] System power consumption'''
-
+        '''[11] System power consumption'''
         missFileAP = [ [] for i in range(self.B)]
         for u in range(self.U):
-            useBS = clustering_policy_UE[u]
-            for bs in useBS:
+            for bs in clustering_policy_UE[u]:
                 if self.Req[u] not in caching_policy_BS[bs]: #Miss
                     missFileAP[bs].append(self.Req[u])
         # Derive F^miss_m for all m
-        missCounterAP = 0
-        for bs in range(self.B):    
+        self.missCounterAP = 0
+        for bs in range(self.B): 
             missFileAP[bs] = list(set(missFileAP[bs]))
-            missCounterAP += len(missFileAP[bs])
+            self.missCounterAP += len(missFileAP[bs])
         # Derive union F^miss_m for all m
         missFileCPU=[]
-        for sublist in missFileAP:
-            for item in sublist:
-                missFileCPU.append(item)
+        for bs in range(self.B):
+            missFileCPU.extend(missFileAP[bs])
         missFileCPU = list(set(missFileCPU))
-        missCounterCPU = len(missFileCPU)
-        self.P_sys = P_t*self.B + P_bh * missCounterAP + P_bb * missCounterCPU # + self.B*P_o_SBS + P_o_MBS 
-        self.missCounterAP = missCounterAP
-        self.missCounterCPU = missCounterCPU
-        '''[10] Energy efficiency'''
+        self.missCounterCPU = len(missFileCPU)
+        self.P_sys = P_t*len(activatedBS) + P_bh * self.missCounterAP + P_bb * self.missCounterCPU # + self.B*P_o_SBS + P_o_MBS 
+        '''[12] Energy efficiency'''
         self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
-        self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
+        #self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
         return self.EE
 
     def snrCL_popCA(self,cacheMode):
@@ -697,7 +691,8 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # Build ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
+    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: snrCL_popCA
     Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
