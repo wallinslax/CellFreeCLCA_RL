@@ -357,7 +357,7 @@ class BS(gym.Env):
             #print(connectionScore[u])
             #print(connectionScore[u].argsort())
             #print(connectionScore[u].argsort()[::-1][:self.L])
-            bestLBS = connectionScore[u].argsort()[::-1][:self.L]
+            #bestLBS = connectionScore[u].argsort()[::-1][:self.L]
             selectedBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
             clustering_policy_UE.append(selectedBS)
         
