@@ -172,29 +172,25 @@ class BS(gym.Env):
 
     def resetChannel(self):
         '''[2] Pair-wise distance'''
-        self.D = np.zeros((self.U,self.B))
-        for u in  range(self.U):
-            for b in range(self.B):
-                self.D[u][b] = 1000*np.sqrt(sum((self.u_coordinate[u]-self.bs_coordinate[b])**2)) # km -> m
-        D0=min(self.D.reshape(self.U*self.B))
-        self.D/=D0
+        self.D = np.zeros((self.B,self.U))
+        for b in  range(self.B):
+            for u in range(self.U):
+                self.D[b][u] = 1000*np.sqrt(sum((self.u_coordinate[u]-self.bs_coordinate[b])**2)) # km -> m
+        D0=min(self.D.reshape(self.B*self.U))
+        self.D = self.D/D0
         '''[3] Large scale fading'''
         self.pl = k*np.power(self.D, -alpha) # Path-loss
 
         '''[4] Small scale fading'''
-        self.h = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B)) # h~CN(0,1); |h|~Rayleigh fading
-        self.g = np.transpose(self.pl * self.h) # self.U X self.B
+        self.h = np.sqrt(h_var/2) * (randn(self.B,self.U)+1j*randn(self.B,self.U)) # h~CN(0,1); |h|~Rayleigh fading
+        self.g = self.pl * self.h
         #return self.g
-        h_conj=self.h.conjugate() 
-        h_sqt=self.h*h_conj
-        h_sqt=(h*h_conj).real
         
-
     def timeVariantChannel(self):
-        noise = np.sqrt(h_var/2) * (randn(self.U,self.B)+1j*randn(self.U,self.B))
+        noise = np.sqrt(h_var/2) * (randn(self.B,self.U)+1j*randn(self.B,self.U))
         h_next =  np.sqrt(1 - self.epsilon**2) * self.h + self.epsilon * noise
         self.h = h_next
-        self.g = np.transpose(self.pl * self.h) 
+        self.g = self.pl * self.h
 
     def resetReq(self):
         '''[3] Generate User request'''
@@ -469,6 +465,8 @@ class BS(gym.Env):
             competeUE = clustering_policy_BS[b]
             if len(competeUE) != 0:
                 #print(self.g[b][competeUE])
+                #print(abs(self.g[b][competeUE]))
+                #print(np.power(abs(self.g[b][competeUE]),2))
                 #print(sum( np.power(abs(self.g[b][competeUE]),2) ))
                 self.rho[b] = P_t / sum( np.power(abs(self.g[b][competeUE]),2) )
             #print( self.rho[b] )

@@ -23,37 +23,9 @@ writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 
 #####################  hyper parameters  ####################
 # DDPG Parameter
-RESET_CHANNEL = False
-LR_DECAY = False
-MAX_EPISODES = 20
-#MAX_EPISODES = 1
-MAX_EP_STEPS = 100 
-
-LR_A = 0.0001    # learning rate for actor
-LR_C = 0.0002    # learning rate for critic
-GAMMA = 0.99     # reward discount
-TAU = 0.01      # soft replacement
-BATCH_SIZE = 128
-n_realizations = 100
-n_LR_update = 1000
 SEED = 0 # random seed
-Var = 1 # control exploration
 #np.random.seed(SEED)
 #####################################
-
-
-logging_interval = 40
-animate_interval = logging_interval * 5
-logdir='./DDPG/'
-VISUALIZE = False
-SEED = 0
-MAX_PATH_LENGTH = 500
-NUM_EPISODES = 12000
-GAMMA=0.9
-BATCH_SIZE = 128
-LR_A = 1e-4
-LR_C = 1e-3
-
 # make variable types for automatic setting to GPU or CPU, depending on GPU availability
 use_cuda = torch.cuda.is_available()
 FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
@@ -185,15 +157,15 @@ class critic(nn.Module):
         return x
 
 class DDPG:
-    def __init__(self, obs_dim, act_dim, critic_lr = LR_C, actor_lr = LR_A, gamma = GAMMA, batch_size = BATCH_SIZE, memMaxSize = 10000):
-        self.gamma = GAMMA
-        self.batch_size = BATCH_SIZE
-        self.actor_lr = LR_A
-        self.critic_lr = LR_C
+    def __init__(self, obs_dim, act_dim, actor_lr = 1e-4, critic_lr = 1e-3, gamma = 0.99, tau = 0.001, batch_size = 128, memMaxSize = 10000):
+        self.batch_size = batch_size
+        self.gamma = gamma # reward discount factor
+        self.actor_lr = actor_lr # learning rate of actor
+        self.critic_lr = critic_lr # learning rate of critic
+        self.tau = tau # soft target updates
 
         #Memory
         self.memMaxSize = memMaxSize
-        self.BATCH_SIZE = BATCH_SIZE
         self.memory = [] #zeros(self.memMaxSize)
         self.position=0
         self.memorySize=0
@@ -226,9 +198,8 @@ class DDPG:
         self.critic_loss = nn.MSELoss()
         
         # noise
-        self.noise = OrnsteinUhlenbeckProcess(mu = np.zeros(act_dim),dimension = act_dim, num_steps = NUM_EPISODES) # OU noise
+        self.noise = OrnsteinUhlenbeckProcess(mu = np.zeros(act_dim),dimension = act_dim, num_steps = 12000) # OU noise
         self.noise.reset() # reset actor OU noise
-        self.Var = Var
     
     def random_action(self):
         action = np.random.uniform(-1.0,1.0,self.act_dim)
@@ -243,7 +214,6 @@ class DDPG:
         self.actor.train()# switch to trainning mode
         
         # add action space noise
-        #action = np.random.normal(action, self.Var)
         action += noise
         '''
         self.noise.reset() # reset actor OU noise
@@ -275,7 +245,7 @@ class DDPG:
         return random.sample(self.memory, batch_size)
 
     def train(self):
-        training_data = np.array(self.sampleMemory(BATCH_SIZE))
+        training_data = np.array(self.sampleMemory(self.batch_size))
         #batch_s,batch_a,batch_r,batch_s1= training_data
         batch_s,batch_a,batch_r,batch_s1=zip(*training_data)
         s1 = Variable(FloatTensor(batch_s))
@@ -312,11 +282,11 @@ class DDPG:
 
         return loss_actor, loss_critic
 
-    def weightSync(self,target_model, source_model, tau = 0.001): # Update the target networks (soft update)
+    def weightSync(self,target_model, source_model): # Update the target networks (soft update)
         for parameter_target, parameter_source in zip(target_model.parameters(), source_model.parameters()):
             #print('parameter_target:',parameter_target)
             #print('parameter_source:',parameter_source)
-            parameter_target.data.copy_((1 - tau) * parameter_target.data + tau * parameter_source.data)
+            parameter_target.data.copy_((1 - self.tau) * parameter_target.data + self.tau * parameter_source.data)
 
 if __name__ == "__main__":
     #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
