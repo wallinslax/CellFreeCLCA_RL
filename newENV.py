@@ -103,7 +103,8 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_poli
                 plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='--',color=color[u])
             
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
-    plt.title(filename+'\nwith EE:'+str(EE))
+    EE = "{:.2f}".format(EE)
+    plt.title('Policy Visulization'+'\n'+filename+'\n with EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
     plt.legend()
@@ -203,8 +204,10 @@ class BS(gym.Env):
         self.L = nMaxLink # Max Link Capability of UE
         self.F = nFile # number of total files
         self.N = nMaxCache # Max cache size of BS
+        self.TopologyName = str(self.B)+'AP_'+str(self.U)+'UE_' + str(self.F) + 'File_'+ str(self.N) +'Cache_'
+        self.TopologyCode = str(self.B)+'.'+str(self.U)+'.' + str(self.F) + '.'+ str(self.N)
         self.epsilon = 0.01
-        filename = 'data/Topology/Topology_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' #+ str(today)
+        filename = 'data/Topology/Topology_'+ self.TopologyName #+ str(today)
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 
                 self.bs_coordinate, self.u_coordinate, self.pl, self.h,  self.g, self.userPreference, self.Req = pickle.load(f)
@@ -230,6 +233,11 @@ class BS(gym.Env):
             # check topology
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,None,None,0,filename)
             # save Topology
+            '''
+            np.savez(filename+'_np',bs_coordinate= self.bs_coordinate, u_coordinate= self.u_coordinate, pl = self.pl, h=self.h, g=self.g, userPreference=self.userPreference, Req=self.Req)
+            npzfile = np.load(filename+'_np.npz')
+            print(npzfile['bs_coordinate'])
+            '''
             with open(filename + '.pkl', 'wb') as f: 
                 pickle.dump([self.bs_coordinate, self.u_coordinate, self.pl, self.h, self.g, self.userPreference, self.Req], f)
             #self.EE_mean,self.EE_std,self.CS_mean,self.CS_std = self.get_statistic()
@@ -372,23 +380,8 @@ class BS(gym.Env):
         clustering_policy_UE, caching_policy_BS = self.action2Policy(action)
         #[EE]##############################################################################################################
         self.EE = self.calEE(clustering_policy_UE, caching_policy_BS)
-        #[HR]##############################################################################################################  
-        '''
-        if inspect.stack()[1][3] != 'bruteForce' :
-            for u in range(self.U):
-                self.Req[u] = genUserRequest(self.userPreference[u])
-        '''
-        '''[13] Hit event'''
-        self.Hit = np.zeros(self.U)
-        for u in range(self.U):
-            useBS = clustering_policy_UE[u]
-            counter = 0
-            for bs in useBS:
-                if self.Req[u] in caching_policy_BS[bs]:
-                    counter+=1
-            if counter == len(useBS):
-                self.Hit[u]=1
-        self.Hit_rate = sum(self.Hit)/len(self.Hit)
+        #[HR]############################################################################################################## 
+        self.HR = self.calHR(clustering_policy_UE, caching_policy_BS)
         #[CS]##############################################################################################################
         self.updateReqStatistic()
         '''[16] Intra-cluster similarity
@@ -442,11 +435,25 @@ class BS(gym.Env):
         observation = self.s_
         reward = self.EE
         done = self.done
-        info = {"HR":self.Hit_rate}
+        info = {"HR":self.HR}
 
-        #return self.EE, self.Hit_rate, self.s_, self.done
+        #return self.EE, self.HR, self.s_, self.done
         return observation, reward, done, info
 
+    def calHR(self,clustering_policy_UE,caching_policy_BS):
+        '''[13] Hit event'''
+        self.Hit = np.zeros(self.U)
+        for u in range(self.U):
+            useBS = clustering_policy_UE[u]
+            counter = 0
+            for bs in useBS:
+                if self.Req[u] in caching_policy_BS[bs]:
+                    counter+=1
+            if counter == len(useBS):
+                self.Hit[u]=1
+        self.HR = sum(self.Hit)/len(self.Hit)
+        return self.HR
+    
     def calEE(self,clustering_policy_UE,caching_policy_BS):
         # S_k = S_u = clustering_policy_UE
         # C_m = C_b = clustering_policy_BS
@@ -502,7 +509,7 @@ class BS(gym.Env):
         for u in range(self.U):
             self.SINR[u] = self.P_r[u]/(self.I[u] + n_var)
             self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
-
+        
         '''[11] System power consumption'''
         missFileAP = [ [] for i in range(self.B)]
         for u in range(self.U):
@@ -522,18 +529,21 @@ class BS(gym.Env):
         self.missCounterCPU = len(missFileCPU)
         self.P_sys = P_t*len(activatedBS) + P_bh * self.missCounterAP + P_bb * self.missCounterCPU # + self.B*P_o_SBS + P_o_MBS 
         '''[12] Energy efficiency'''
-        self.EE = sum(self.Throughput)/(self.P_sys/1000) # Bits/s*W mW->W
+        sumThroughput = sum(self.Throughput)
+        if (self.P_sys>0):
+            self.EE = sumThroughput/(self.P_sys/1000) # Bits/s*W mW->W
+        else:
+            self.EE = 0
         #self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
         return self.EE
 
     def snrCL_popCA(self,cacheMode):
         g_abs = abs(self.g)
-        g_absT = g_abs.T
+        #g_absT = g_abs.T
         clustering_policy_UE = []  
         # kth UE determine the AP set (S_k)     
         for u in range(self.U):
-            #print(g_absT[u])
-            bestBS = g_absT[u].argsort()[::-1][:self.L]
+            bestBS = g_abs[u].argsort()[::-1][:self.L]
             clustering_policy_UE.append(bestBS)
 
         # transform clustering_policy_UE to clustering_policy_BS
@@ -579,31 +589,38 @@ class BS(gym.Env):
         return clustering_policy_UE,caching_policy_BS
 
     def getBestEE_snrCL_popCA(self,cacheMode='pref',isSave=False,isPlot=False,isEPS=False):
-        # Derive Policy: snrCL_popCA
-        snrCL_popCA_EE_Array=[-1]
+        # Find Best L
+        snrCL_popCA_EE_Array = [-1]
+        snrCL_Throughput_Array = [-1]
         for self.L in range(1,self.B+1):
             snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
-            #snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode='req')
             snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+            snrCL_Throughput = sum(self.Throughput)
             #print('self.L=',self.L,',snrCL_popCA_EE=',snrCL_popCA_EE)
-            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)   
+            snrCL_popCA_EE_Array.append(snrCL_popCA_EE) 
+            snrCL_Throughput_Array.append(snrCL_Throughput)  
+        # Derive Best L s.t. max EE by snrCL_popCA_EE_Array/snrCL_Throughput_Array
         self.L = np.argmax(snrCL_popCA_EE_Array)
+        # Derive Benchmark policy given L
         snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
-        Best_snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+        # Derive Benchmark result
+        EE_snrCL_popCA = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+        Throughput_snrCL_popCA = sum(self.Throughput)
+        Psys_snrCL_popCA = self.P_sys/1000 # mW->W
+        HR_snrCL_popCA = self.calHR(snrCL_policy_UE,popCA_policy_BS)
+
+        filenameBM = 'data/'+self.TopologyCode+'/snrCL_popCA_'+self.TopologyName + str(self.L) +'L_' + str(today)
         if isSave:
             # Save the whole environment
-            filenameNCTC = 'data/snrCL_popCA_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.L) + 'L_' + str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
-            with open(filenameNCTC+'.pkl', 'wb') as f:  
-                pickle.dump([self, Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS], f)
+            with open(filenameBM+'.pkl', 'wb') as f:
+                pickle.dump([self, snrCL_policy_UE, popCA_policy_BS], f)
             # Load the whole environment
-            with open(filenameNCTC+'.pkl','rb') as f: 
-                self, Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = pickle.load(f)
+            with open(filenameBM+'.pkl','rb') as f:
+                self, snrCL_policy_UE, popCA_policy_BS = pickle.load(f)
         if isPlot:
-            # Plot
-            filenameNCTC = 'data/Visualization_SNR+POP_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.L) + 'L_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
-            displayBest_snrCL_popCA_EE = "{:.2f}".format(Best_snrCL_popCA_EE)
-            plot_UE_BS_distribution_Cache(self.bs_coordinate, self.u_coordinate, self.Req, snrCL_policy_UE, popCA_policy_BS, displayBest_snrCL_popCA_EE,filenameNCTC,isEPS)
-        return Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS
+            plot_UE_BS_distribution_Cache(self.bs_coordinate, self.u_coordinate, self.Req, snrCL_policy_UE, popCA_policy_BS, EE_snrCL_popCA,filenameBM,isEPS)
+
+        return EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS
 
     def getOptEE_BF(self,isSave=True,isPlot=True):
         print("this is brute force for EE")
@@ -656,18 +673,16 @@ class BS(gym.Env):
                     bestEE = subBestEE
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
+        filenameBF = 'data/'+self.TopologyCode+'/BF/BF_'+self.TopologyName + str(today)
         if isSave:
             # Save the whole environment with Optimal Clustering and Optimal Caching
-            filenameBF = 'data/BF_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
             with open(filenameBF+'.pkl', 'wb') as f:  
                 pickle.dump([self, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS], f)
             # Load the whole environment with Optimal Clustering and Optimal Caching   
-            filenameBF = 'data/BF_4AP_4UE_5File_2Cache_2020-11-24'
             with open(filenameBF+'.pkl','rb') as f: 
                 self, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
         if isPlot:
             # Plot
-            filenameBF = 'data/Visualization_BF_'+str(self.B)+'AP_'+str(self.U)+'UE_'+ str(self.F) + 'File_'+ str(self.N) +'Cache_' + str(today)
             plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF)
         
 
@@ -689,21 +704,19 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # Build ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: snrCL_popCA
-    Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
+    EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    #bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.getOptEE_BF(isSave=False,isPlot=False)
+    bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = env.getOptEE_BF(isSave=True,isPlot=True)
     #------------------------------------------------------------------------------------------------
     # Load the whole environment with Optimal Clustering and Optimal Caching   
-    filenameBF = 'data/4.4.5.2/BF_4AP_4UE_5File_2Cache_2020-11-24'
+    filenameBF = 'data/4.4.5.2/BF/BF_4AP_4UE_5File_2Cache_2021-01-06'
     with open(filenameBF+'.pkl','rb') as f: 
         env, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-
     # Plot
-    filenameBF = 'data/Visualization_BF_'+str(env.B)+'AP_'+str(env.U)+'UE_'+ str(env.F) + 'File_'+ str(env.N) +'Cache_' + str(today)
     plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,opt_clustering_policy_UE,opt_caching_policy_BS,bestEE,filenameBF,isEPS=True)
         

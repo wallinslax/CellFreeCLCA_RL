@@ -245,13 +245,13 @@ class DDPG:
         return random.sample(self.memory, batch_size)
 
     def train(self):
-        training_data = np.array(self.sampleMemory(self.batch_size))
+        training_data = np.array(self.sampleMemory(self.batch_size)) 
         #batch_s,batch_a,batch_r,batch_s1= training_data
-        batch_s,batch_a,batch_r,batch_s1=zip(*training_data)
+        batch_s,batch_a,batch_r,batch_s2=zip(*training_data)
         s1 = Variable(FloatTensor(batch_s))
         a1 = Variable(FloatTensor(batch_a))
         r1 = Variable(FloatTensor(np.array(batch_r).reshape(-1,1)))
-        s2 = Variable(FloatTensor(batch_s1))
+        s2 = Variable(FloatTensor(batch_s2))
         
         
         # ---------------------- optimize critic ----------------------###
@@ -287,6 +287,23 @@ class DDPG:
             #print('parameter_target:',parameter_target)
             #print('parameter_source:',parameter_source)
             parameter_target.data.copy_((1 - self.tau) * parameter_target.data + self.tau * parameter_source.data)
+
+    def loadModel(self,modelPath,modelName):
+        # modelPath = 'D:\\/Model/' + env.TopologyName+'/'
+        # modelName = '2act_cl'
+        # modelName = '2act_ca'
+        # modelName = '1act'
+        self.actor = torch.load(modelPath + modelName +'_Actor'+'.pt')
+        #self.actor_target.load_state_dict(self.actor.state_dict())
+        self.actor = torch.load(modelPath + modelName +'_Actor_Target'+'.pt')
+        self.critic = torch.load(modelPath + modelName +'_Critic'+'.pt')
+        self.critic = torch.load(modelPath + modelName +'_Critic_Target'+'.pt')
+    
+    def saveModel(self,modelPath,modelName):
+        torch.save(self.actor       , modelPath + modelName + '_Actor'+'.pt')
+        torch.save(self.actor_target, modelPath + modelName + '_Actor_Target'+'.pt')
+        torch.save(self.critic      , modelPath + modelName +'_Critic'+'.pt')
+        torch.save(self.critic_target, modelPath + modelName + '_Critic_Target'+'.pt')
 
 if __name__ == "__main__":
     #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)

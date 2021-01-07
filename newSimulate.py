@@ -32,7 +32,7 @@ LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
           
-MAX_EPISODES = 10**2*10
+MAX_EPISODES = 10**2*5
 MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
@@ -95,9 +95,24 @@ def plotlist(listA,listName): # for debugging.
     fig = plt.gcf()
     fig.savefig('data/'+ listName +'.png', format='png',dpi=200)
 
-def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,isEPS=False):
+def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughput=False,isPlotPsys=False,isPlotHR=False,isEPS=False):
     with open(filename+'.pkl','rb') as f: 
         env, poolEE,poolThroughput,poolPsys,poolHR,poolLossActor,poolLossCritic = pickle.load(f)
+    filename = 'data/'+ env.TopologyCode+'/TrainingPhase/'+env.TopologyName+'Train'
+    #---------------------------------------------------------------------------------------------
+    # Load Brute Force Policy
+    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+        # Load Optimal clustering and caching Policy
+        filenameBF = 'data/4.4.5.2/BF/BF_4AP_4UE_5File_2Cache_2021-01-06'
+        with open(filenameBF+'.pkl','rb') as f: 
+            envXX, EE_BF, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
+        env.calEE(opt_clustering_policy_UE, opt_caching_policy_BS)
+        EE_BF = env.EE
+        Throughput_BF= sum(env.Throughput)
+        Psys_BF = env.P_sys/1000 # mW->W
+        HR_BF = env.calHR(opt_clustering_policy_UE, opt_caching_policy_BS)
+    # Load Benchmark Policy
+    EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
     #---------------------------------------------------------------------------------------------
     if isPlotLoss:
         # plot RL: poolLossCritic/poolLossActor
@@ -105,45 +120,36 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,
         plt.plot(range(len(poolLossCritic)),poolLossCritic,'c-',label='Loss of critic')
         plt.plot(range(len(poolLossActor)),poolLossActor,'r-',label='Loss of actor')
         
-        titleNmae = 'Training History: Critic and Actor Loss\n'+filename
-        plt.title(titleNmae) # title
+        plt.title('Training History: Critic and Actor Loss\n' + env.TopologyName) # title
         plt.ylabel("Q") # y label
         plt.xlabel("Iteration") # x label
         plt.grid()
         plt.legend()
         fig = plt.gcf()
-        fig.savefig(filename + '_Loss.png', format='png',dpi=600)
+        fig.savefig(filename + '_Loss.png', format='png',dpi=120)
         if isEPS:
-            fig.savefig(filename + '_Loss.eps', format='eps',dpi=600)
+            fig.savefig(filename + '_Loss.eps', format='eps',dpi=120)
     #---------------------------------------------------------------------------------------------
     if isPlotEE: #poolEE/poolThroughput/poolPsys/env
-        # plot RL: poolEE
         plt.cla()
         nXpt=len(poolEE)
-        '''
-        plt.plot(range(nXpt),poolEE,'b-',label='EE')
-        plt.plot(range(nXpt),poolThroughput,'r-',label='Throughput')
-        plt.plot(range(nXpt),poolPsys,'g-',label='Psys')
-        '''
-        plt.plot(range(nXpt),poolEE,label='EE')
-        plt.plot(range(nXpt),poolThroughput,label='Throughput')
-        plt.plot(range(nXpt),poolPsys,label='Psys')
-        #plt.plot(range(nXpt),poolEE,'b-',label='EE of 2 Actors: DDPG_Cluster + DDPG_Cache')
-        finalValue = "{:.2f}".format(max(poolEE))
+        # plot DDPG
+        plt.plot(range(nXpt),poolEE,'b-',label='DDPG 1act')
+        #finalValue = "{:.2f}".format(max(poolEE)) # use max value NOT last value
+        finalValue = "{:.2f}".format(poolEE[-1])
         plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
+        # plot Benchmark
+        plt.plot(range(nXpt),EE_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(EE_snrCL_popCA)
+        plt.annotate(finalValue, (nXpt,EE_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
         #---------------------------------------------------------------------------------------------
+        # plot Brute Force
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
-            # Load Optimal clustering and caching Policy
-            filenameBF = 'data/4.4.5.2/BF_4AP_4UE_5File_2Cache_2020-11-24'
-            with open(filenameBF+'.pkl','rb') as f: 
-                env, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-
-            plt.plot(range(nXpt),bestEE*np.ones(nXpt),'k-',label='Brute Force')
-            finalValue = "{:.2f}".format(bestEE)
-            plt.annotate(finalValue, (nXpt,bestEE),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+            plt.plot(range(nXpt),EE_BF*np.ones(nXpt),'k-',label='Brute Force')
+            finalValue = "{:.2f}".format(EE_BF)
+            plt.annotate(finalValue, (nXpt,EE_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
         #---------------------------------------------------------------------------------------------
-        titleNmae = 'Training History: Energy Efficiency(8a)\n'+filename
-        plt.title(titleNmae) # title
+        plt.title('Training Phase: Energy Efficiency (EE)\n'+env.TopologyName) # title
         plt.ylabel("Bits/J") # y label
         plt.xlabel("Iteration") # x label
         plt.grid()
@@ -151,58 +157,166 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotHR=False,
         fig = plt.gcf()
         fig.savefig(filename + '_EE.png', format='png',dpi=120)
         if isEPS:
-            fig.savefig(filename + '_EE.eps', format='eps',dpi=600)
+            fig.savefig(filename + '_EE.eps', format='eps',dpi=120)
+    #---------------------------------------------------------------------------------------------
+    if isPlotThroughput:
+        plt.cla()
+        nXpt=len(poolThroughput)
+        # plot DDPG
+        plt.plot(range(nXpt),poolThroughput,'b-',label='DDPG 1act')
+        #finalValue = "{:.2f}".format(max(poolThroughput)) # use max value NOT last value
+        finalValue = "{:.2f}".format(poolThroughput[-1])
+        plt.annotate(finalValue, (nXpt,poolThroughput[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
+        # plot Benchmark
+        plt.plot(range(nXpt),Throughput_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(Throughput_snrCL_popCA)
+        plt.annotate(finalValue, (nXpt,Throughput_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+        #---------------------------------------------------------------------------------------------
+        # plot Brute Force
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+            plt.plot(range(nXpt),Throughput_BF*np.ones(nXpt),'k-',label='Brute Force')
+            finalValue = "{:.2f}".format(Throughput_BF)
+            plt.annotate(finalValue, (nXpt,Throughput_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+        #---------------------------------------------------------------------------------------------
+        plt.title('Training Phase: Throughput\n'+env.TopologyName) # title
+        plt.ylabel("Bits/s") # y label
+        plt.xlabel("Iteration") # x label
+        plt.grid()
+        plt.legend()
+        fig = plt.gcf()
+        fig.savefig(filename + '_Throughput.png', format='png',dpi=120)
+        if isEPS:
+            fig.savefig(filename + '_Throughput.eps', format='eps',dpi=120)
+    #---------------------------------------------------------------------------------------------
+    if isPlotPsys:
+        plt.cla()
+        nXpt=len(poolPsys)
+        # plot DDPG
+        plt.plot(range(nXpt),poolPsys,'b-',label='DDPG 1act')
+        #finalValue = "{:.2f}".format(max(poolPsys)) # use max value NOT last value
+        finalValue = "{:.2f}".format(poolPsys[-1]) 
+        plt.annotate(finalValue, (nXpt,poolPsys[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
+        # plot Benchmark
+        plt.plot(range(nXpt),Psys_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(Psys_snrCL_popCA)
+        plt.annotate(finalValue, (nXpt,Psys_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+        #---------------------------------------------------------------------------------------------
+        # plot Brute Force
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+            plt.plot(range(nXpt),Psys_BF*np.ones(nXpt),'k-',label='Brute Force')
+            finalValue = "{:.2f}".format(Psys_BF)
+            plt.annotate(finalValue, (nXpt,Psys_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+        #---------------------------------------------------------------------------------------------
+        plt.title('Training Phase: System Power Consumption\n'+env.TopologyName) # title
+        plt.ylabel("W") # y label
+        plt.xlabel("Iteration") # x label
+        plt.grid()
+        plt.legend()
+        fig = plt.gcf()
+        fig.savefig(filename + '_Psys.png', format='png',dpi=120)
+        if isEPS:
+            fig.savefig(filename + '_Psys.eps', format='eps',dpi=120)
     #---------------------------------------------------------------------------------------------
     if isPlotHR:
-        # plot RL: poolHR
         plt.cla()
-        plt.plot(range(len(poolHR)),poolHR,'y-',label='1Act')
-        titleNmae = 'Training History: Hit Rate(5) \n'+filename
-        plt.title(titleNmae) # title
+        nXpt=len(poolHR)
+        # plot DDPG
+        plt.plot(range(nXpt),poolHR,'b-',label='DDPG 1act')
+        # plot Benchmark
+        plt.plot(range(nXpt),HR_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        #---------------------------------------------------------------------------------------------
+        # plot Brute Force
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+            plt.plot(range(nXpt),HR_BF*np.ones(nXpt),'k-',label='Brute Force')
+        #---------------------------------------------------------------------------------------------
+        plt.title('Training Phase: Hit Rate (HR) \n'+env.TopologyName) # title
         plt.ylabel("Ratio") # y label
         plt.xlabel("Iteration") # x label
         plt.grid()
         plt.legend()
         fig = plt.gcf()
-        fig.savefig(filename + '_HR.png', format='png',dpi=600)
+        fig.savefig(filename + '_HR.png', format='png',dpi=120)
         if isEPS:
-            fig.savefig(filename + '_HR.eps', format='eps',dpi=600)
+            fig.savefig(filename + '_HR.eps', format='eps',dpi=120)
         #fig.show()
 
+def plotEvalutionHistory(filename,isEPS=False):
+    # plot EE/Throughput/Psys/HR
+    with open(filename+'.pkl','rb') as f: 
+        env, poolEE_BM,poolThroughput_BM,poolPsys_BM,poolHR_BM,poolMissCounterAP_BM,poolMissCounterCPU_BM, \
+             poolEE_RL,poolThroughput_RL,poolPsys_RL,poolHR_RL,poolMissCounterAP_RL,poolMissCounterCPU_RL= pickle.load(f)
+    
+    #---------------------------------------------------------------------------------------------
+    # EE
+    plt.cla()
+    plt.plot(poolEE_RL,'b-',label='DDPG 1act')
+    plt.plot(poolEE_BM,'g-',label='SNR-based Clustering + Popularity-based Caching')
+    plt.title('Evaluation Phase: Energy Efficiency (EE)\n'+env.TopologyName) # title
+    plt.ylabel("Bits/J") # y label
+    plt.xlabel("Iteration") # x label
+    plt.grid()
+    plt.legend()
+    fig = plt.gcf()
+    fig.savefig(filename + '_EE.png', format='png',dpi=120)
+    if isEPS:
+        fig.savefig(filename + '_EE.eps', format='eps',dpi=120)
+    #---------------------------------------------------------------------------------------------
+    # Throughput
+    plt.cla()
+    plt.plot(poolThroughput_RL,'b-',label='DDPG 1act')
+    plt.plot(poolThroughput_BM,'g-',label='SNR-based Clustering + Popularity-based Caching')
+    plt.title('Evaluation Phase: Throughput\n'+env.TopologyName) # title
+    plt.ylabel("Bits/s") # y label
+    plt.xlabel("Iteration") # x label
+    plt.grid()
+    plt.legend()
+    fig = plt.gcf()
+    fig.savefig(filename + '_Throughput.png', format='png',dpi=120)
+    if isEPS:
+        fig.savefig(filename + '_Throughput.eps', format='eps',dpi=120)
+    #---------------------------------------------------------------------------------------------
+    # Psys
+    plt.cla()
+    plt.plot(poolPsys_RL,'b-',label='DDPG 1act')
+    plt.plot(poolPsys_BM,'g-',label='SNR-based Clustering + Popularity-based Caching')
+    plt.title('Evaluation Phase: System Power Consumption\n'+env.TopologyName) # title
+    plt.ylabel("W") # y label
+    plt.xlabel("Iteration") # x label
+    plt.grid()
+    plt.legend()
+    fig = plt.gcf()
+    fig.savefig(filename + '_Psys.png', format='png',dpi=120)
+    if isEPS:
+        fig.savefig(filename + '_Psys.eps', format='eps',dpi=120)
+    #---------------------------------------------------------------------------------------------
+    # HR
+    plt.cla()
+    plt.plot(poolHR_RL,'b-',label='DDPG 1act')
+    plt.plot(poolHR_BM,'g-',label='SNR-based Clustering + Popularity-based Caching')
+    plt.title('Evaluation Phase: Hit Rate (HR) \n'+env.TopologyName) # title
+    plt.ylabel("Ratio") # y label
+    plt.xlabel("Iteration") # x label
+    plt.grid()
+    plt.legend()
+    fig = plt.gcf()
+    fig.savefig(filename + '_HR.png', format='png',dpi=120)
+    if isEPS:
+        fig.savefig(filename + '_HR.eps', format='eps',dpi=120)
+
+
 def trainModel(env,actMode,changeReq,changeChannel,loadActor):
-    TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
     # new ACT 
+    modelPath = 'D:\\/Model/' + env.TopologyName+'/'
     if actMode == '2act':
-        ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL)
-        ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA)
+        ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
+        ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
         if(loadActor):
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CL_Actor'+'.pt'
-            ddpg_cl.actor = torch.load(modelPath)
-            ddpg_cl.actor_target.load_state_dict(ddpg_s.actor.state_dict())
-
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CL_Critic'+'.pt'
-            ddpg_cl.critic = torch.load(modelPath)
-            ddpg_cl.critic_target.load_state_dict(ddpg_s.critic.state_dict())
-
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CA_Actor'+'.pt'
-            ddpg_ca.actor = torch.load(modelPath)
-            ddpg_ca.actor_target.load_state_dict(ddpg_s.actor.state_dict())
-
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CA_Critic'+'.pt'
-            ddpg_ca.critic = torch.load(modelPath)
-            ddpg_ca.critic_target.load_state_dict(ddpg_s.critic.state_dict())
-
-
+           ddpg_cl.loadModel(modelPath = modelPath, modelName= actMode+'_cl') 
+           ddpg_ca.loadModel(modelPath = modelPath, modelName= actMode+'_ca') 
     elif actMode == '1act':
         ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
         if(loadActor):
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Actor'+'.pt'
-            ddpg_s.actor = torch.load(modelPath)
-            ddpg_s.actor_target.load_state_dict(ddpg_s.actor.state_dict())
-
-            modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Critic'+'.pt'
-            ddpg_s.critic = torch.load(modelPath)
-            ddpg_s.critic_target.load_state_dict(ddpg_s.critic.state_dict())
+            ddpg_s.loadModel(modelPath = modelPath, modelName= actMode)
         '''
         print('Actor Network')
         print(ddpg_s.actor)
@@ -319,22 +433,22 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
                 countChangeChannel+=1
 
             if (iteraion % 1000) == 0: # Mectric Snapshot
-                Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
-                if poolEE[-1]>Best_snrCL_popCA_EE:
-                    print('poolEE win!',poolEE[-1], 'Best_snrCL_popCA_EE loss QQ', Best_snrCL_popCA_EE)
+                EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+                if poolEE[-1]>EE_snrCL_popCA:
+                    print('poolEE win!',poolEE[-1], 'EE_snrCL_popCA loss QQ', EE_snrCL_popCA)
                 '''
                 else:
                     if (iteraion % 50000) == 0:
                         noiseSigma = 1 # reset explore
                 '''
                 '''
-                poolSP_EE = poolSP_EE + np.ones(1000)*Best_snrCL_popCA_EE
+                poolSP_EE = poolSP_EE + np.ones(1000)*EE_snrCL_popCA
                 poolSP_Throughput = poolSP_Throughput + np.ones(1000)*sum(env.Throughput)
                 poolSP_Psys = poolSP_Psys + np.ones(1000)*env.P_sys/1000
                 poolSP_missCounterAP = poolSP_missCounterAP + np.ones(1000)*env.missCounterAP
                 poolSP_missCounterCPU = poolSP_missCounterCPU + np.ones(1000)*env.missCounterCPU
                 '''
-                poolSP_EE.extend(np.ones(1000)*Best_snrCL_popCA_EE)
+                poolSP_EE.extend(np.ones(1000)*EE_snrCL_popCA)
                 poolSP_Throughput.extend(np.ones(1000)*sum(env.Throughput))
                 poolSP_Psys.extend(np.ones(1000)*env.P_sys/1000)
                 poolSP_missCounterAP.extend(np.ones(1000)*env.missCounterAP)
@@ -355,132 +469,143 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
     #---------------------------------------------------------------------------------------------  
     #return ddpg_s.actor,env,poolEE,poolLossActor,poolLossCritic
     #---------------------------------------------------------------------------------------------   
-    TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
-    # Save Model MDDPG
+    # Save Model
     if actMode == '2act':
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CL_Actor'+'.pt'
-        torch.save(ddpg_cl.actor, modelPath)
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CL_Critic'+'.pt'
-        torch.save(ddpg_cl.critic, modelPath)
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CA_Actor'+'.pt'
-        torch.save(ddpg_ca.actor, modelPath)
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_CA_Critic'+'.pt'
-        torch.save(ddpg_ca.critic, modelPath)
-    # Save Model SDDPG
-    elif actMode == '1act': 
-        #filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Actor'+'.pt'
-        torch.save(ddpg_s.actor, modelPath)
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Critic'+'.pt'
-        torch.save(ddpg_s.critic, modelPath)
-    
-    # Save the plot point
-    if actMode == '2act':
-        filename = 'data/2ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
+        ddpg_cl.saveModel(modelPath = modelPath,modelName=actMode+'_cl')
+        ddpg_ca.saveModel(modelPath = modelPath,modelName=actMode+'_ca')
     elif actMode == '1act':
-        filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
-
+        ddpg_s.saveModel(modelPath = modelPath,modelName=actMode)
+    
+    # Save Line
+    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
     with open(filename+'.pkl', 'wb') as f:  
         pickle.dump([env, poolEE,poolThroughput,poolPsys,poolHR,poolLossActor,poolLossCritic], f)
 
-def getEE_RL(env,ddpg,isPlot=False,isEPS=False):
+def EvaluateModel(env,actMode, nItr=100):
+    # new ACT 
+    modelPath = 'D:\\/Model/' + env.TopologyName+'/'
+    if actMode == '2act':
+        ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
+        ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
+        # load Model
+        ddpg_cl.loadModel(modelPath = modelPath, modelName= actMode+'_cl') 
+        ddpg_ca.loadModel(modelPath = modelPath, modelName= actMode+'_ca') 
+    elif actMode == '1act':
+        ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
+        # load Model
+        ddpg_s.loadModel(modelPath = modelPath, modelName= actMode)
+    
+    poolEE_RL=[]
+    poolEE_BM=[]
+    poolThroughput_RL=[]
+    poolThroughput_BM=[]
+    poolPsys_RL=[]
+    poolPsys_BM=[]
+    poolHR_RL=[]
+    poolHR_BM=[]
+    poolMissCounterAP_RL = []
+    poolMissCounterAP_BM = []
+    poolMissCounterCPU_RL = []
+    poolMissCounterCPU_BM = []
+    for ep in tqdm(range(nItr),bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}'):
+        # Calcualte Benchmark (BM): EE/Throughput/Psys/HR/missCounterAP/missCounterCPU
+        EE_BM, Throughput_BM, Psys_BM, HR_BM, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+        poolEE_BM.append(EE_BM)
+        poolThroughput_BM.append(Throughput_BM)
+        poolPsys_BM.append(Psys_BM)
+        poolHR_BM.append(HR_BM)
+        poolMissCounterAP_BM.append(env.missCounterAP)
+        poolMissCounterCPU_BM.append(env.missCounterCPU)
+        ## Calcualte RL
+        EE_RL, Throughput_RL, Psys_RL, HR_RL, RL_CLPolicy_UE, RL_CAPolicy_BS = getEE_RL(env,actMode = actMode,ddpg_s=ddpg_s,isPlot=False,isEPS=False)
+        poolEE_RL.append(EE_RL)
+        poolThroughput_RL.append(Throughput_RL)
+        poolPsys_RL.append(Psys_RL)
+        poolHR_RL.append(HR_RL)
+        poolMissCounterAP_RL.append(env.missCounterAP)
+        poolMissCounterCPU_RL.append(env.missCounterCPU)
+        # Sample CL/CA Policy Visualization
+        if ep == nItr/2:
+            filenameRL = 'data/'+env.TopologyCode+'/EvaluationPhase/'+actMode+'_'   +env.TopologyName+'_Evaluation'
+            plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,RL_CLPolicy_UE,RL_CAPolicy_BS,EE_RL,filenameRL,isEPS=False)
+            filenameBM = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'snrCL_popCA_'+env.TopologyName + str(env.L) +'L_' +'_Evaluation'
+            plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,snrCL_policy_UE,popCA_policy_BS,EE_BM,filenameBM,isEPS=False)
+        # Change Environment
+        env.timeVariantChannel()
+        #env.resetReq()
+    # Save Line
+    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+actMode+'_'+ env.TopologyName +'_Evaluation'
+    with open(filename+'.pkl', 'wb') as f:  
+        pickle.dump([env, poolEE_BM,poolThroughput_BM,poolPsys_BM,poolHR_BM,poolMissCounterAP_BM,poolMissCounterCPU_BM, \
+                          poolEE_RL,poolThroughput_RL,poolPsys_RL,poolHR_RL,poolMissCounterAP_RL,poolMissCounterCPU_RL], f)
+    with open(filename+'.pkl','rb') as f: 
+        env, poolEE_BM,poolThroughput_BM,poolPsys_BM,poolHR_BM,poolMissCounterAP_BM,poolMissCounterCPU_BM, \
+             poolEE_RL,poolThroughput_RL,poolPsys_RL,poolHR_RL,poolMissCounterAP_RL,poolMissCounterCPU_RL= pickle.load(f)
 
-    rlBestEE = 0
-    rlBestCLPolicy_UE=[]
-    rlBestCAPolicy_BS=[]
+def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None,isPlot=False,isEPS=False):
+    EE_RL = 0
+    RL_CLPolicy_UE=[]
+    RL_CAPolicy_BS=[]
     obs = env.reset()# Get initial state
     for i in range(1000):
-        noise = np.random.normal(0,0,size=env.dimAct)
-        action = ddpg.action(obs,noise)
+        if actMode == '2act':
+            noise = np.random.normal(0, 0,size=env.dimActCL)
+            a_cl = ddpg_cl.action(obs,noise)# choose action [ env.U*env.B x 1 ]
+            #a_ca = opt_caching_state.flatten()
+            noise = np.random.normal(0, 0,size=env.dimActCA)
+            a_ca = ddpg_ca.action(obs,noise)# choose action [ env.U*env.B x 1 ]
+            action = np.concatenate((a_cl, a_ca), axis=0)
+        elif actMode == '1act':
+            noise = np.random.normal(0, 0,size=env.dimAct)
+            action = ddpg_s.action(obs,noise)
+
         obs, reward, done, info = env.step(action)
-        if reward>rlBestEE:
-            rlBestEE = reward
-            rlBestCLPolicy_UE, rlBestCAPolicy_BS = env.action2Policy(action)
+        if reward>EE_RL:
+            EE_RL = reward
+            RL_CLPolicy_UE, RL_CAPolicy_BS = env.action2Policy(action)
     #print('rlBestCLPolicy_UE:',rlBestCLPolicy_UE)
     #print('rlBestCAPolicy_BS:',rlBestCAPolicy_BS)
     #print('rlBestEE:',rlBestEE)
-    if isPlot:
-        displayrlBestEE = "{:.2f}".format(rlBestEE)
-        filenamePV = 'data/Visualization_1ACT_'+str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_' +str(today)+'_'+displayrlBestEE
-        plot_UE_BS_distribution_Cache(env.bs_coordinate,env.u_coordinate,env.Req,rlBestCLPolicy_UE,rlBestCAPolicy_BS,displayrlBestEE,filenamePV,isEPS)
-    return rlBestEE,rlBestCLPolicy_UE,rlBestCAPolicy_BS
+    EE_RL = env.calEE(RL_CLPolicy_UE,RL_CAPolicy_BS)
+    return EE_RL, sum(env.Throughput),env.P_sys/1000, env.HR, RL_CLPolicy_UE,RL_CAPolicy_BS
 
 if __name__ == '__main__':
     # new ENV
-    #env = BS(nBS=100,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-    #env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    actMode = '2act'
-    TopologyName = str(env.B)+'AP_'+str(env.U)+'UE_' + str(env.F) + 'File_'+ str(env.N) +'Cache_'
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    actMode = '1act'
+    '''
+    # Derive Policy: BM
+    EE_BM, Throughput_BM, Psys_BM, HR_BM, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+    #==============================================================================================
     # Training Phase
-    rlBestEE = 0
-    Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
-    while(rlBestEE<Best_snrCL_popCA_EE):
-        trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False)
-        filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
-        plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isEPS=False)
+    EE_RLBest = 0
+    while(EE_RLBest<EE_BM):
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = True)  
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
+        #plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
 
-        filenameSDDPG = 'data/1ACT_' + "DDPG_ALL_" + TopologyName + str(today) + '.pt'
         # evaluate performance
-        ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Actor'+'.pt'
-        ddpg_s.actor = torch.load(modelPath)
-        ddpg_s.actor_target.load_state_dict(ddpg_s.actor.state_dict())
-        modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Critic'+'.pt'
-        ddpg_s.critic = torch.load(modelPath)
-        ddpg_s.critic_target.load_state_dict(ddpg_s.critic.state_dict())
-
-        rlBestEE, rlBestCLPolicy_UE, rlBestCAPolicy_BS = getEE_RL(env,ddpg_s,isPlot=False,isEPS=False)
-
+        if actMode == '2act':
+            ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
+            ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
+            ddpg_cl.loadModel(modelPath = modelPath, modelName= actMode+'_cl') 
+            ddpg_ca.loadModel(modelPath = modelPath, modelName= actMode+'_ca') 
+        elif actMode == '1act':
+            ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
+            ddpg_s.loadModel(modelPath = modelPath, modelName= actMode)
+            
+            EE_RLBest, RLCLPolicy_UE, RLCAPolicy_BS = getEE_RL(env,ddpg_s,isPlot=False,isEPS=False)
+            plot_UE_BS_distribution_Cache(env.bs_coordinate, env.u_coordinate, env.Req, RLCLPolicy_UE, RLCAPolicy_BS, EE_RLBest,filename,isEPS=False)
+    
     #---------------------------------------------------------------------------------------------
     # Show Training Phase 
-    filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'+str(today)
-    #filename = 'data/1ACT_40AP_10UE_50File_5Cache_100000_Train_2020-12-25'
-    plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotHR=True,isEPS=False)
+    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
+    plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+    '''
     #==============================================================================================
-    # Show Testing Phase (RL vs Benchmark1)
-    ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct)###
-    # Load Actor
-    modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Actor'+'.pt'
-    ddpg_s.actor = torch.load(modelPath)
-    ddpg_s.actor_target.load_state_dict(ddpg_s.actor.state_dict())
-    # Load Critic
-    modelPath = 'D:\\/Model/' + TopologyName+'/' + actMode + '_Critic'+'.pt'
-    ddpg_s.critic = torch.load(modelPath)
-    ddpg_s.critic_target.load_state_dict(ddpg_s.critic.state_dict())
-
-    poolRL=[]
-    poolsnrCL_popCA=[]
-    
-    for itr in tqdm(range(100)):
-        rlBestEE, rlBestCLPolicy_UE, rlBestCAPolicy_BS = getEE_RL(env,ddpg_s,isPlot=False,isEPS=False)
-        poolRL.append(rlBestEE)
-        Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False,isEPS=False)
-        poolsnrCL_popCA.append(Best_snrCL_popCA_EE)
-        if itr == 50:
-            rlBestEE, rlBestCLPolicy_UE, rlBestCAPolicy_BS = getEE_RL(env,ddpg_s,isPlot=True,isEPS=True)
-            Best_snrCL_popCA_EE, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=True,isEPS=False)
-
-        env.timeVariantChannel()
-        #env.resetReq()
-    filename = 'data/1ACT_'+ TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Eval_'+str(today)    
-    with open(filename+'.pkl', 'wb') as f:  
-        pickle.dump([env, poolRL,poolsnrCL_popCA], f)
-    with open(filename+'.pkl','rb') as f: 
-        env, poolRL, poolsnrCL_popCA = pickle.load(f)
-
-    # plot RL vs Benchmark1 in Evaluation Phase
-    plt.cla()
-    plt.plot(range(len(poolRL)),poolRL,'b-',label='1Act')
-    plt.plot(range(len(poolsnrCL_popCA)),poolsnrCL_popCA,'g-',label='snrCL_popCA')
-    titleNmae = 'Evaluation Phase: Energy Efficiency(8a) \n'+filename
-    plt.title(titleNmae) # title
-    plt.ylabel("Bits/J") # y label
-    plt.xlabel("Iteration(t)") # x label
-    plt.grid()
-    plt.legend()
-    fig = plt.gcf()
-    fig.savefig(filename + '.png', format='png',dpi=1200)
-    fig.savefig(filename + '.eps', format='eps',dpi=1200)
-    #---------------------------------------------------------------------------------------------
+    # Evaluation Phase
+    #EvaluateModel(env,actMode=actMode, nItr=100)
+    # Load Line
+    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+actMode+'_'+ env.TopologyName +'_Evaluation'
+    plotEvalutionHistory(filename,isEPS=False)
     
