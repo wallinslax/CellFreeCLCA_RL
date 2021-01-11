@@ -303,7 +303,6 @@ def plotEvalutionHistory(filename,isEPS=False):
     if isEPS:
         fig.savefig(filename + '_HR.eps', format='eps',dpi=120)
 
-
 def trainModel(env,actMode,changeReq,changeChannel,loadActor):
     # new ACT 
     modelPath = 'D:\\/Model/' + env.TopologyName+'/'
@@ -573,16 +572,15 @@ if __name__ == '__main__':
     # new ENV
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     actMode = '1act'
-    '''
     # Derive Policy: BM
     EE_BM, Throughput_BM, Psys_BM, HR_BM, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
     #==============================================================================================
     # Training Phase
     EE_RLBest = 0
     while(EE_RLBest<EE_BM):
-        trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = True)  
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False)  
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
-        #plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
 
         # evaluate performance
         if actMode == '2act':
@@ -601,10 +599,10 @@ if __name__ == '__main__':
     # Show Training Phase 
     filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
     plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-    '''
+    
     #==============================================================================================
     # Evaluation Phase
-    #EvaluateModel(env,actMode=actMode, nItr=100)
+    EvaluateModel(env,actMode=actMode, nItr=100)
     # Load Line
     filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+actMode+'_'+ env.TopologyName +'_Evaluation'
     plotEvalutionHistory(filename,isEPS=False)

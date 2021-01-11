@@ -539,11 +539,11 @@ class BS(gym.Env):
 
     def snrCL_popCA(self,cacheMode):
         g_abs = abs(self.g)
-        #g_absT = g_abs.T
+        g_absT = g_abs.T
         clustering_policy_UE = []  
         # kth UE determine the AP set (S_k)     
         for u in range(self.U):
-            bestBS = g_abs[u].argsort()[::-1][:self.L]
+            bestBS = g_absT[u].argsort()[::-1][:self.L]
             clustering_policy_UE.append(bestBS)
 
         # transform clustering_policy_UE to clustering_policy_BS
@@ -705,7 +705,8 @@ class BS(gym.Env):
 if __name__ == "__main__":
     # Build ENV
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    #env = BS(nBS=6,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: snrCL_popCA
     EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref',isSave=False,isPlot=False)
