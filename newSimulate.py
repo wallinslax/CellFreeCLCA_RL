@@ -111,8 +111,13 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughpu
         Throughput_BF= sum(env.Throughput)
         Psys_BF = env.P_sys/1000 # mW->W
         HR_BF = env.calHR(opt_clustering_policy_UE, opt_caching_policy_BS)
-    # Load Benchmark Policy
-    EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+
+    # Benchmark 1 snrCL_popCA
+    EE_BM1, SNR_CL_Policy_UE, POP_CA_Policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+    
+    TP_BM1 = sum(env.Throughput)
+    Psys_BM1 = env.P_sys/1000 # mW->W
+    HR_BM1 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
     #---------------------------------------------------------------------------------------------
     if isPlotLoss:
         # plot RL: poolLossCritic/poolLossActor
@@ -139,9 +144,9 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughpu
         finalValue = "{:.2f}".format(poolEE[-1])
         plt.annotate(finalValue, (nXpt,poolEE[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
         # plot Benchmark
-        plt.plot(range(nXpt),EE_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
-        finalValue = "{:.2f}".format(EE_snrCL_popCA)
-        plt.annotate(finalValue, (nXpt,EE_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+        plt.plot(range(nXpt),EE_BM1*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(EE_BM1)
+        plt.annotate(finalValue, (nXpt,EE_BM1),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
         #---------------------------------------------------------------------------------------------
         # plot Brute Force
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
@@ -168,9 +173,9 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughpu
         finalValue = "{:.2f}".format(poolThroughput[-1])
         plt.annotate(finalValue, (nXpt,poolThroughput[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
         # plot Benchmark
-        plt.plot(range(nXpt),Throughput_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
-        finalValue = "{:.2f}".format(Throughput_snrCL_popCA)
-        plt.annotate(finalValue, (nXpt,Throughput_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+        plt.plot(range(nXpt),TP_BM1*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(TP_BM1)
+        plt.annotate(finalValue, (nXpt,TP_BM1),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
         #---------------------------------------------------------------------------------------------
         # plot Brute Force
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
@@ -197,9 +202,9 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughpu
         finalValue = "{:.2f}".format(poolPsys[-1]) 
         plt.annotate(finalValue, (nXpt,poolPsys[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='b')
         # plot Benchmark
-        plt.plot(range(nXpt),Psys_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
-        finalValue = "{:.2f}".format(Psys_snrCL_popCA)
-        plt.annotate(finalValue, (nXpt,Psys_snrCL_popCA),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+        plt.plot(range(nXpt),Psys_BM1*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        finalValue = "{:.2f}".format(Psys_BM1)
+        plt.annotate(finalValue, (nXpt,Psys_BM1),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
         #---------------------------------------------------------------------------------------------
         # plot Brute Force
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
@@ -223,7 +228,7 @@ def plotTrainingHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotThroughpu
         # plot DDPG
         plt.plot(range(nXpt),poolHR,'b-',label='DDPG 1act')
         # plot Benchmark
-        plt.plot(range(nXpt),HR_snrCL_popCA*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
+        plt.plot(range(nXpt),HR_BM1*np.ones(nXpt),'g-',label='SNR-based Clustering + Popularity-based Caching')
         #---------------------------------------------------------------------------------------------
         # plot Brute Force
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
@@ -328,24 +333,33 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
     iteraion = 0
     countChangeReq = 0
     countChangeChannel = 0
-
+    # RL
     poolEE=[]
-    poolThroughput = []
+    poolTP = []
     poolPsys = []
+    poolHR=[]
     poolmissCounterAP = []
     poolmissCounterCPU = []
-
-    poolSP_EE=[]
-    poolSP_Throughput=[]
-    poolSP_Psys = []
-    poolSP_missCounterAP = []
-    poolSP_missCounterCPU = []
-
-    poolHR=[]
     poolLossActor = []
     poolLossCritic = []
     poolVarLossCritic = []
     poolVarEE = []
+
+    # BM1 snrCL_popCA
+    poolBM1_EE=[]
+    poolBM1_TP=[]
+    poolBM1_Psys = []
+    poolBM1_HR = []
+    poolBM1_missCounterAP = []
+    poolBM1_missCounterCPU = []
+
+    # BM2
+    poolBM2_EE=[]
+    poolBM2_TP=[]
+    poolBM2_Psys = []
+    poolBM2_HR = []
+    poolBM2_missCounterAP = []
+    poolBM2_missCounterCPU = []
 
     for ep in tqdm(range(MAX_EPISODES),bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}'):
         ep_reward = 0
@@ -380,14 +394,11 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
             obs2, reward, done, info = env.step(action)
             EE = reward
             poolEE.append(EE)
-            poolThroughput.append(sum(env.Throughput))
+            poolTP.append(sum(env.Throughput))
             poolPsys.append(env.P_sys/1000)
+            poolHR.append(env.HR)
             poolmissCounterAP.append(env.missCounterAP)
             poolmissCounterCPU.append(env.missCounterCPU)
-            
-            HR = info["HR"]
-            poolHR.append(HR)
-
             # RL Add Memory
             if actMode == '2act':
                 ddpg_cl.addMemory([obs,a_cl,reward,obs2])
@@ -413,6 +424,10 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
 
             # iteration update
             iteraion +=1
+
+            if iteraion % 30 == 0:
+                noiseSigma*=0.995
+
             if (iteraion % 1000) == 0:
                 #print(list(poolLossCritic[-100:]))
                 poolVarLossCritic.append( np.var(poolLossCritic[-1000:]) )
@@ -422,17 +437,44 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
                     env.resetReq()
                     print('**Change Request: ',env.Req)
                     countChangeReq+=1
-                    noiseSigma = 1 # reset explore
-
-            if iteraion % 30 == 0:
-                noiseSigma*=0.995
-
-            if iteraion % 300 == 0 and changeChannel:    
-                env.timeVariantChannel()   
-                countChangeChannel+=1
+                    noiseSigma = 1 # reset explore     
 
             if (iteraion % 1000) == 0: # Mectric Snapshot
-                EE_snrCL_popCA, Throughput_snrCL_popCA, Psys_snrCL_popCA, HR_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+                # BM1
+                EE_BM1, SNR_CL_Policy_UE, POP_CA_Policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+                TP_BM1 = sum(env.Throughput)
+                Psys_BM1 = env.P_sys/1000 # mW->W
+                HR_BM1 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
+                poolBM1_EE.extend(np.ones(1000)*EE_BM1)
+                poolBM1_TP.extend(np.ones(1000)*TP_BM1)
+                poolBM1_Psys.extend(np.ones(1000)*Psys_BM1)
+                poolBM1_HR.extend(np.ones(1000)*HR_BM1)
+                poolBM1_missCounterAP.extend(np.ones(1000)*env.missCounterAP)
+                poolBM1_missCounterCPU.extend(np.ones(1000)*env.missCounterCPU)
+                #BM2
+                SNR_CL_Policy_UE = env.getSNR_CL_Policy()
+                POP_CA_Policy_BS = env.getPOP_CA_Policy()
+                EE_BM2 = env.calEE(SNR_CL_Policy_UE,POP_CA_Policy_BS)
+                TP_BM2 = sum(env.Throughput)
+                Psys_BM2 = env.P_sys/1000 # mW->W
+                HR_BM2 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
+                poolBM2_EE.extend(np.ones(1000)*EE_BM2)
+                poolBM2_TP.extend(np.ones(1000)*TP_BM2)
+                poolBM2_Psys.extend(np.ones(1000)*Psys_BM2)
+                poolBM2_HR.extend(np.ones(1000)*HR_BM2)
+                poolBM2_missCounterAP.extend(np.ones(1000)*env.missCounterAP)
+                poolBM2_missCounterCPU.extend(np.ones(1000)*env.missCounterCPU)
+
+                # plot
+                plotEEFamily(poolEE,poolTP,poolPsys,'RL')
+                plotEEFamily(poolBM1_EE,poolBM1_TP,poolBM1_Psys,'SP')
+                plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU,'RL')
+                plotPsysFamily(poolBM1_Psys,poolBM1_missCounterAP,poolBM1_missCounterCPU,'SP')
+
+                plotlist(poolLossCritic,'LossCritic')
+                plotlist(poolLossActor,'LossActor')
+                plotlist(poolHR,'poolHR')
+
                 if poolEE[-1]>EE_snrCL_popCA:
                     print('poolEE win!',poolEE[-1], 'EE_snrCL_popCA loss QQ', EE_snrCL_popCA)
                 '''
@@ -440,27 +482,9 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
                     if (iteraion % 50000) == 0:
                         noiseSigma = 1 # reset explore
                 '''
-                '''
-                poolSP_EE = poolSP_EE + np.ones(1000)*EE_snrCL_popCA
-                poolSP_Throughput = poolSP_Throughput + np.ones(1000)*sum(env.Throughput)
-                poolSP_Psys = poolSP_Psys + np.ones(1000)*env.P_sys/1000
-                poolSP_missCounterAP = poolSP_missCounterAP + np.ones(1000)*env.missCounterAP
-                poolSP_missCounterCPU = poolSP_missCounterCPU + np.ones(1000)*env.missCounterCPU
-                '''
-                poolSP_EE.extend(np.ones(1000)*EE_snrCL_popCA)
-                poolSP_Throughput.extend(np.ones(1000)*sum(env.Throughput))
-                poolSP_Psys.extend(np.ones(1000)*env.P_sys/1000)
-                poolSP_missCounterAP.extend(np.ones(1000)*env.missCounterAP)
-                poolSP_missCounterCPU.extend(np.ones(1000)*env.missCounterCPU)
-                
-                plotEEFamily(poolEE,poolThroughput,poolPsys,'RL')
-                plotEEFamily(poolSP_EE,poolSP_Throughput,poolSP_Psys,'SP')
-                plotPsysFamily(poolPsys,poolmissCounterAP,poolmissCounterCPU,'RL')
-                plotPsysFamily(poolSP_Psys,poolSP_missCounterAP,poolSP_missCounterCPU,'SP')
-
-                plotlist(poolLossCritic,'LossCritic')
-                plotlist(poolLossActor,'LossActor')
-                plotlist(poolHR,'poolHR')
+                if changeChannel:
+                    env.timeVariantChannel()   
+                    countChangeChannel+=1
                 
         #if ep_reward>28500:
         #    print('\nEpisode:{} Reward:{} Explore:{}'.format(ep,ep_reward,noiseSigma))
@@ -476,9 +500,13 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
         ddpg_s.saveModel(modelPath = modelPath,modelName=actMode)
     
     # Save Line
-    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
-    with open(filename+'.pkl', 'wb') as f:  
-        pickle.dump([env, poolEE,poolThroughput,poolPsys,poolHR,poolLossActor,poolLossCritic], f)
+    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+    with open(filename+ actMode +'RL.pkl', 'wb') as f:  
+        pickle.dump([env, poolEE,poolTP,poolPsys,poolHR,poolLossActor,poolLossCritic], f)
+    with open(filename+'BM1.pkl', 'wb') as f:  
+        pickle.dump([env, poolBM1_EE,poolBM1_TP,poolBM1_Psys,poolBM1_HR,poolBM1_missCounterAP,poolBM1_missCounterCPU], f)
+    with open(filename+'BM2.pkl', 'wb') as f:  
+        pickle.dump([env, poolBM2_EE,poolBM2_TP,poolBM2_Psys,poolBM2_HR,poolBM2_missCounterAP,poolBM2_missCounterCPU], f)
 
 def EvaluateModel(env,actMode, nItr=100):
     # new ACT 
@@ -573,13 +601,14 @@ if __name__ == '__main__':
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     actMode = '1act'
     # Derive Policy: BM
-    EE_BM, Throughput_BM, Psys_BM, HR_BM, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+    EE_BM1, snrCL_policy_UE, popCA_policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
     #==============================================================================================
     # Training Phase
     EE_RLBest = 0
-    while(EE_RLBest<EE_BM):
-        trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False)  
-        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
+    while(EE_RLBest<EE_BM1):
+        #trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False)  
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False)  
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotTrainingHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotThroughput=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
 
         # evaluate performance
@@ -594,7 +623,7 @@ if __name__ == '__main__':
             
             EE_RLBest, RLCLPolicy_UE, RLCAPolicy_BS = getEE_RL(env,ddpg_s,isPlot=False,isEPS=False)
             plot_UE_BS_distribution_Cache(env.bs_coordinate, env.u_coordinate, env.Req, RLCLPolicy_UE, RLCAPolicy_BS, EE_RLBest,filename,isEPS=False)
-    
+
     #---------------------------------------------------------------------------------------------
     # Show Training Phase 
     filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+actMode+'_'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train'
