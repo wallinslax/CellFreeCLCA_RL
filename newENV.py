@@ -62,11 +62,15 @@ def UE_SBS_location_distribution(lambda0): #PPP
     points = np.random.rand(numbPoints, 2)-0.5
     return points
 
-def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_policy_UE,caching_policy_BS,EE,filename,isEPS=False):
+def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,filename,isEPS=False):
+    if 'Training' in filename:
+        phaseName = 'Training Phase'
+    elif 'Evaluation' in filename:
+        phaseName = 'Evaluation Phase'
     plt.cla()
     # AP
-    xx_bs = bs_coordinate[:,0]
-    yy_bs = bs_coordinate[:,1]
+    xx_bs = env.bs_coordinate[:,0]
+    yy_bs = env.bs_coordinate[:,1]
     plt.scatter(xx_bs, yy_bs, edgecolor='k', facecolor='k',marker='^', alpha=1 ,label='AP')
     b = 0
     for x,y in zip(xx_bs, yy_bs):
@@ -76,35 +80,35 @@ def plot_UE_BS_distribution_Cache(bs_coordinate,u_coordinate,Req,clustering_poli
         b = b+1
     # UE
     '''
-    xx_u = u_coordinate[:,0]
-    yy_u = u_coordinate[:,1]
+    xx_u = env.u_coordinate[:,0]
+    yy_u = env.u_coordinate[:,1]
     plt.scatter(xx_u, yy_u, edgecolor='b', facecolor='none',marker='X', alpha=0.5 ,label='UE')
     u = 0
     for x,y in zip(xx_u,yy_u):
         plt.annotate("%s" % u, xy=(x,y), xytext=(x, y-0.03),color='b')#label index
-        plt.annotate("%s" % 'Req:'+str(Req[u]), xy=(x,y), xytext=(x, y),color='red')
+        plt.annotate("%s" % 'env.Req:'+str(env.Req[u]), xy=(x,y), xytext=(x, y),color='red')
         u = u+1
     '''
     #cluster plot
     #color =np.array( ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'fuchsia','peachpuff','pink'])
-    nUE=len(u_coordinate)
+    nUE=len(env.u_coordinate)
     color=cm.rainbow(np.linspace(0,1,nUE))
     for u in range(nUE):
-        xx_u = u_coordinate[u,0]
-        yy_u = u_coordinate[u,1]
+        xx_u = env.u_coordinate[u,0]
+        yy_u = env.u_coordinate[u,1]
         plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u))
         plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.03),color=color[u])#label index
-        plt.annotate("%s" % 'Req:'+str(Req[u]), xy=(xx_u,yy_u), xytext=(xx_u, yy_u),color=color[u])
+        plt.annotate("%s" % 'env.Req:'+str(env.Req[u]), xy=(xx_u,yy_u), xytext=(xx_u, yy_u),color=color[u])
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
             for bs in useBS:
-                xx_bs = bs_coordinate[bs,0]
-                yy_bs = bs_coordinate[bs,1]
+                xx_bs = env.bs_coordinate[bs,0]
+                yy_bs = env.bs_coordinate[bs,1]
                 plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='--',color=color[u])
             
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
     EE = "{:.2f}".format(EE)
-    plt.title('Policy Visulization'+'\n'+filename+'\n with EE:'+str(EE))
+    plt.title(phaseName+': Policy Visulization\n'+env.TopologyName+'\n Sampled EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
     plt.legend()
@@ -606,6 +610,7 @@ class BS(gym.Env):
         return clustering_policy_UE,caching_policy_BS
 
     def getBestEE_snrCL_popCA(self,cacheMode='pref'):
+        originL = self.L
         # Find Best L
         snrCL_popCA_EE_Array = [-1]
         snrCL_Throughput_Array = [-1]
@@ -622,7 +627,7 @@ class BS(gym.Env):
         snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
         # Derive Benchmark result
         EE_snrCL_popCA = self.calEE(snrCL_policy_UE,popCA_policy_BS)
-
+        self.L = originL
         return EE_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS
 
     def getOptEE_BF(self,isSave=True,isPlot=True):
