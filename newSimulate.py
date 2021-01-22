@@ -267,13 +267,13 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
     # new ACT 
     modelPath = 'D:\\/Model/' + env.TopologyName+'/'
     if actMode == '2act':
-        ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
-        ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
+        ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=25000)
+        ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=25000)
         if(loadActor):
            ddpg_cl.loadModel(modelPath = modelPath, modelName= actMode+'_cl') 
            ddpg_ca.loadModel(modelPath = modelPath, modelName= actMode+'_ca') 
     elif actMode == '1act':
-        ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
+        ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=25000)###
         if(loadActor):
             ddpg_s.loadModel(modelPath = modelPath, modelName= actMode)
         '''
@@ -430,11 +430,9 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
 
                 if poolEE_RL[-1]>EE_BM1:
                     print('poolEE_RL win!',poolEE_RL[-1], 'EE_BM1 loss QQ', EE_BM1)
-                '''
-                else:
-                    if (iteraion % 50000) == 0:
-                        noiseSigma = 1 # reset explore
-                '''
+                elif (iteraion % 50000) == 0:
+                    noiseSigma = 1 # reset explore
+
                 if changeChannel:
                     env.timeVariantChannel()   
                     countChangeChannel+=1
@@ -558,9 +556,10 @@ def EvaluateModel(env,actMode, nItr=100):
     # Calculate Loss Count
     lossCount = 0
     for i in range(len(poolEE_RL)):
-        if poolEE_RL[i] < poolEE_BM1[i]:
+        if poolEE_RL[i] < poolEE_BM2[i]:
             lossCount+=1
     return lossCount
+
 def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
     EE_RL = 0
     RL_CLPolicy_UE=[]
@@ -590,19 +589,18 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     actMode = '1act'
     #==============================================================================================
     lossCount = 1
     while(lossCount):
         # Training Phase
-        #trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False)  
-        #trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False)  
-        #filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
-        #plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False)  
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+        plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         #==============================================================================================
         # Evaluation Phase
-        #lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
+        lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
         plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         print('\n lossCount=',lossCount)

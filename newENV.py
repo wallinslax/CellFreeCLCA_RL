@@ -63,6 +63,8 @@ def UE_SBS_location_distribution(lambda0): #PPP
     return points
 
 def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,filename,isEPS=False):
+    #drive, path_and_file = os.path.splitdrive(filename)
+    path, filenameO = os.path.split(filename)
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -108,7 +110,7 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
             
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
     EE = "{:.2f}".format(EE)
-    plt.title(phaseName+': Policy Visulization\n'+env.TopologyName+'\n Sampled EE:'+str(EE))
+    plt.title('Policy Visulization\n'+ filenameO +'\n Sampled EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
     plt.legend()
@@ -235,7 +237,7 @@ class BS(gym.Env):
             self.Req = np.zeros(self.U,dtype=int)
             self.resetReq()
             # check topology
-            plot_UE_BS_distribution_Cache(self.bs_coordinate,self.u_coordinate,self.Req,None,None,0,filename)
+            plot_UE_BS_distribution_Cache(self,None,None,0,filename,isEPS=True)
             # save Topology
             '''
             np.savez(filename+'_np',bs_coordinate= self.bs_coordinate, u_coordinate= self.u_coordinate, pl = self.pl, h=self.h, g=self.g, userPreference=self.userPreference, Req=self.Req)
@@ -714,7 +716,7 @@ if __name__ == "__main__":
     # Build ENV
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
 
     #------------------------------------------------------------------------------------------------
     # Benchmark 1 snrCL_popCA
@@ -723,6 +725,9 @@ if __name__ == "__main__":
     TP_BM1 = sum(env.Throughput)
     Psys_BM1 = env.P_sys/1000 # mW->W
     HR_BM1 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
+
+    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
+    plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE,POP_CA_Policy_BS,EE_BM1,filename,isEPS=True)
     #------------------------------------------------------------------------------------------------
     # Benchmark 2
     SNR_CL_Policy_UE = env.getSNR_CL_Policy()
