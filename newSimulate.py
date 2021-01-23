@@ -109,6 +109,7 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
         env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolmissCounterAP_BM2,poolmissCounterCPU_BM2 = pickle.load(f)
     #---------------------------------------------------------------------------------------------
     # Load Brute Force Policy
+    env.B=5
     if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
         # Load Optimal clustering and caching Policy
         filenameBF = 'data/4.4.5.2/BF/BF_4AP_4UE_5File_2Cache_2021-01-06'
@@ -263,9 +264,10 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
             fig.savefig(filename + '_HR.eps', format='eps',dpi=120)
         #fig.show()
 
-def trainModel(env,actMode,changeReq,changeChannel,loadActor):
+def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
     # new ACT 
-    modelPath = 'D:\\/Model/' + env.TopologyName+'/'
+    #modelPath = 'D:\\/Model/' + env.TopologyName+'/'
+    modelPath = 'data/'+env.TopologyCode+'/TrainingPhase/Model/'
     if actMode == '2act':
         ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=25000)
         ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=25000)
@@ -427,12 +429,12 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
 
                 plotlist(poolLossCritic,'LossCritic')
                 plotlist(poolLossActor,'LossActor')
-
+                '''
                 if poolEE_RL[-1]>EE_BM1:
                     print('poolEE_RL win!',poolEE_RL[-1], 'EE_BM1 loss QQ', EE_BM1)
-                elif (iteraion % 50000) == 0:
+                elif (iteraion % 30000) == 0:
                     noiseSigma = 1 # reset explore
-
+                '''
                 if changeChannel:
                     env.timeVariantChannel()   
                     countChangeChannel+=1
@@ -442,23 +444,25 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor):
     #---------------------------------------------------------------------------------------------   
     # Save Model
     if actMode == '2act':
-        ddpg_cl.saveModel(modelPath = modelPath,modelName=actMode+'_cl')
-        ddpg_ca.saveModel(modelPath = modelPath,modelName=actMode+'_ca')
+        ddpg_cl.saveModel(modelPath = modelPath,modelName= '['+ str(number) +']'+ actMode+'_cl')
+        ddpg_ca.saveModel(modelPath = modelPath,modelName= '['+ str(number) +']'+ actMode+'_ca')
     elif actMode == '1act':
-        ddpg_s.saveModel(modelPath = modelPath,modelName=actMode)
+        ddpg_s.saveModel(modelPath = modelPath,modelName= '['+ str(number) +']' + actMode)
     
     # Save Line
-    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+    filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
     with open(filename+ actMode +'RL.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolmissCounterAP_RL,poolmissCounterCPU_RL,poolLossActor,poolLossCritic], f)
     with open(filename+'BM1.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_BM1,poolTP_BM1,poolPsys_BM1,poolHR_BM1,poolmissCounterAP_BM1,poolmissCounterCPU_BM1], f)
     with open(filename+'BM2.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolmissCounterAP_BM2,poolmissCounterCPU_BM2], f)
+    return number
 
 def EvaluateModel(env,actMode, nItr=100):
     # new ACT 
     modelPath = 'D:\\/Model/' + env.TopologyName+'/'
+    modelPath = 'data/'+env.TopologyCode+'/TrainingPhase/Model/'+str(number)+'/'
     if actMode == '2act':
         ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
         ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
@@ -589,14 +593,32 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     actMode = '1act'
     #==============================================================================================
+    # multi-instance training
+    nJob=2
+    #with concurrent.futures.ProcessPoolExecutor(max_workers= (num_cores-2) ) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers= nJob ) as executor:
+        futures = []
+        for i in range(nJob):
+            future = executor.submit(trainModel,env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=i)
+            futures.append(future)
+        for future in tqdm(concurrent.futures.as_completed(futures),total=len(futures),bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}'):
+            #print(future.result())
+            number = future.result()
+            print('\n number: ',number,' is Completed')
+    for number in range(nJob):
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+        plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+
+    #==============================================================================================
     lossCount = 1
+    number=0
     while(lossCount):
         # Training Phase
-        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False)  
-        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number)  
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         #==============================================================================================
         # Evaluation Phase
@@ -604,4 +626,5 @@ if __name__ == '__main__':
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
         plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         print('\n lossCount=',lossCount)
+    
     
