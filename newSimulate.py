@@ -459,20 +459,20 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
         pickle.dump([env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolmissCounterAP_BM2,poolmissCounterCPU_BM2], f)
     return number
 
-def EvaluateModel(env,actMode, nItr=100):
+def EvaluateModel(env,actMode, nItr=100, number=0):
     # new ACT 
     modelPath = 'D:\\/Model/' + env.TopologyName+'/'
-    modelPath = 'data/'+env.TopologyCode+'/TrainingPhase/Model/'+str(number)+'/'
+    modelPath = 'data/'+env.TopologyCode+'/TrainingPhase/Model/'
     if actMode == '2act':
         ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
         ddpg_ca = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCA,memMaxSize=20000)
         # load Model
-        ddpg_cl.loadModel(modelPath = modelPath, modelName= actMode+'_cl') 
-        ddpg_ca.loadModel(modelPath = modelPath, modelName= actMode+'_ca') 
+        ddpg_cl.loadModel(modelPath = modelPath, modelName= '['+ str(number) +']' + actMode+'_cl') 
+        ddpg_ca.loadModel(modelPath = modelPath, modelName= '['+ str(number) +']' + actMode+'_ca') 
     elif actMode == '1act':
         ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
         # load Model
-        ddpg_s.loadModel(modelPath = modelPath, modelName= actMode)
+        ddpg_s.loadModel(modelPath = modelPath, modelName= '['+ str(number) +']'+ actMode)
     
     # RL
     poolEE_RL=[]
@@ -593,8 +593,25 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
 
 if __name__ == '__main__':
     # new ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
     actMode = '1act'
+    #==============================================================================================
+    lossCount = 1
+    while(lossCount):
+        # Training Phase
+        '''
+        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False)  
+        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
+        plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        '''
+        #==============================================================================================
+        # Evaluation Phase
+        lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
+        filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
+        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        print('\n lossCount=',lossCount)
+    
+
     #==============================================================================================
     # multi-instance training
     nJob=2
@@ -611,20 +628,4 @@ if __name__ == '__main__':
     for number in range(nJob):
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-
-    #==============================================================================================
-    lossCount = 1
-    number=0
-    while(lossCount):
-        # Training Phase
-        trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number)  
-        filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
-        plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-        #==============================================================================================
-        # Evaluation Phase
-        lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
-        filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
-        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-        print('\n lossCount=',lossCount)
-    
     
