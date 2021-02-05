@@ -282,30 +282,26 @@ class BS(gym.Env):
         self.clustering_state = np.zeros(self.B*self.U)
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
-
+        # Oberservation Definition
+        '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-        '''
+        
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-
-        self.s_ = np.hstack([  self.g.real.flatten(),
+        ''' 
+        # Paper Oberservation
+        self.s_ = np.hstack([   self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()]) 
-                                
-        self.s_ = np.hstack([  self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()]) 
-        ''' 
+                                self.reqStatistic_norm.flatten()]) 
+        #------------------------------------------------------------------
         
         self.dimActCL = self.B*self.U
         self.dimActCA = self.B*self.F
@@ -322,30 +318,26 @@ class BS(gym.Env):
         self.caching_state = np.zeros(self.B*self.F)
         self.reqStatistic_norm = np.zeros(self.U*self.F)
         '''
-
+        # Oberservation Definition
+        '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-        '''
+        
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-
+        ''' 
+        # Paper Oberservation
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()]) 
-        
-        self.s_ = np.hstack([  self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()]) 
-        '''
+                                self.reqStatistic_norm.flatten()]) 
+        #------------------------------------------------------------------
         return self.s_
 
     def updateReqStatistic(self):
@@ -413,29 +405,26 @@ class BS(gym.Env):
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
 
+        # Oberservation Definition
+        '''
         self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten()])
-        '''
-        self.s_ = np.hstack([  self.SINR,
+        
+        self.s_ = np.hstack([   self.SINR,
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
                                 self.reqStatistic_norm.flatten(),
                                 self.Req.flatten()])
-
+        ''' 
+        # Paper Oberservation
         self.s_ = np.hstack([  self.g.real.flatten(),
                                 self.g.imag.flatten(),
                                 self.clustering_state.flatten(),
                                 self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])  
-        
-        self.s_ = np.hstack([   self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])  
-        ''' 
+                                self.reqStatistic_norm.flatten()]) 
+        #------------------------------------------------------------------
         
         '''[20] Whether episode done'''
         observation = self.s_
@@ -544,8 +533,8 @@ class BS(gym.Env):
         return self.EE
 
     def getSNR_CL_Policy(self):
-        g_abs = abs(self.g)
-        g_absT = g_abs.T
+        g_abs = abs(self.g) # g  = [B*U]
+        g_absT = g_abs.T # g_absT= [U*B]
         SNR_CL_Policy_UE = []  
         # kth UE determine the AP set (S_k)     
         for u in range(self.U):
@@ -561,14 +550,7 @@ class BS(gym.Env):
         return POP_CA_Policy_BS
 
     def snrCL_popCA(self,cacheMode):
-        g_abs = abs(self.g)
-        g_absT = g_abs.T
-        clustering_policy_UE = []  
-        # kth UE determine the AP set (S_k)     
-        for u in range(self.U):
-            bestBS = g_absT[u].argsort()[::-1][:self.L]
-            clustering_policy_UE.append(bestBS)
-
+        clustering_policy_UE = self.getSNR_CL_Policy()
         # transform clustering_policy_UE to clustering_policy_BS
         clustering_policy_BS = []
         for b in range(self.B):
@@ -624,13 +606,14 @@ class BS(gym.Env):
             snrCL_popCA_EE_Array.append(snrCL_popCA_EE) 
             snrCL_Throughput_Array.append(snrCL_Throughput)  
         # Derive Best L s.t. max EE by snrCL_popCA_EE_Array/snrCL_Throughput_Array
-        self.L = np.argmax(snrCL_popCA_EE_Array)
+        bestL = np.argmax(snrCL_popCA_EE_Array)
+        self.L = bestL
         # Derive Benchmark policy given L
         snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
         # Derive Benchmark result
         EE_snrCL_popCA = self.calEE(snrCL_policy_UE,popCA_policy_BS)
         self.L = originL
-        return EE_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS
+        return EE_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS, bestL
 
     def getOptEE_BF(self,isSave=True):
         print("this is brute force for EE")
@@ -713,11 +696,11 @@ if __name__ == "__main__":
     # Build ENV
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
 
     #------------------------------------------------------------------------------------------------
     # Benchmark 1 snrCL_popCA
-    EE_BM1, SNR_CL_Policy_UE, POP_CA_Policy_BS = env.getBestEE_snrCL_popCA(cacheMode='pref')
+    EE_BM1, SNR_CL_Policy_UE, POP_CA_Policy_BS, bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
     TP_BM1 = sum(env.Throughput)
     Psys_BM1 = env.P_sys/1000 # mW->W
     HR_BM1 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)

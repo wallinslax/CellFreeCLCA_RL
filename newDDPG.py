@@ -24,7 +24,11 @@ writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 #####################  hyper parameters  ####################
 # DDPG Parameter
 SEED = 0 # random seed
-#np.random.seed(SEED)
+np.random.seed(SEED)
+'''
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+'''
 #####################################
 # make variable types for automatic setting to GPU or CPU, depending on GPU availability
 use_cuda = torch.cuda.is_available()
