@@ -6,7 +6,7 @@ from numpy import linalg as LA
 from numpy.random import randn
 from random import randint
 import scipy.stats
-import os,math,random,itertools,csv,pickle,inspect
+import os,math,random,itertools,csv,pickle,inspect,torch
 from itertools import combinations,permutations,product
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -76,9 +76,10 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     plt.scatter(xx_bs, yy_bs, edgecolor='k', facecolor='k',marker='^', alpha=1 ,label='AP')
     b = 0
     for x,y in zip(xx_bs, yy_bs):
-        plt.annotate("%s" % b, xy=(x,y), xytext=(x, y-0.03),color='k')#label index
+        #plt.annotate("%s" % 'AP'+str(b), xy=(x,y), xytext=(x, y-0.04),color='k')#label index
+        plt.annotate("%s" % b, xy=(x,y), xytext=(x, y-0.04),color='k')#label index
         if caching_policy_BS:
-            plt.annotate("%s" % 'cache:'+str(caching_policy_BS[b]), xy=(x,y), xytext=(x, y),color='k')#label cache
+            plt.annotate("%s" % str(caching_policy_BS[b]), xy=(x,y), xytext=(x, y),color='k')#label cache
         b = b+1
     # UE
     '''
@@ -99,14 +100,15 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
         xx_u = env.u_coordinate[u,0]
         yy_u = env.u_coordinate[u,1]
         plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u))
-        plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.03),color=color[u])#label index
-        plt.annotate("%s" % 'env.Req:'+str(env.Req[u]), xy=(xx_u,yy_u), xytext=(xx_u, yy_u),color=color[u])
+        #plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.04),color=color[u])#label index
+        #plt.annotate("%s" % 'UE'+str(u)+' ['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.05, yy_u+0.015),color=color[u])
+        plt.annotate("%s" % '['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u+0.015),color=color[u])
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
             for bs in useBS:
                 xx_bs = env.bs_coordinate[bs,0]
                 yy_bs = env.bs_coordinate[bs,1]
-                plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='--',color=color[u])
+                plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='-',color=color[u])
             
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
     EE = "{:.2f}".format(EE)
@@ -693,6 +695,15 @@ class BS(gym.Env):
         pass
 
 if __name__ == "__main__":
+    for i in range(100):
+        # DDPG Parameter
+        SEED = i # random seed
+        np.random.seed(SEED)
+        torch.manual_seed(SEED)
+        torch.cuda.manual_seed_all(SEED)
+        env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=10,nMaxCache=2,loadENV = False)
+        actMode = '1act'
+
     # Build ENV
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)

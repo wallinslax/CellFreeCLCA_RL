@@ -20,12 +20,11 @@ from torch.autograd import Variable
 from torchviz import make_dot
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter('runs/fashion_mnist_experiment_1')
-
 #####################  hyper parameters  ####################
 # DDPG Parameter
-SEED = 0 # random seed
-np.random.seed(SEED)
 '''
+SEED = 3 # random seed
+np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 '''
