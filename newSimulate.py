@@ -793,15 +793,25 @@ if __name__ == '__main__':
         env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
         actMode = '1act'
         # Training Phase
+<<<<<<< HEAD
         lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number)  
+=======
+        lossCount = trainModel(env,actMode=actMode,changeReq=True, changeChannel=True, loadActor = False,number=number)  
+>>>>>>> 923ad7d161018389f3379ad058038d98b00e1d2c
         lossCountVec.append(lossCount)
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
     print('lossCountVec=',lossCountVec)
+<<<<<<< HEAD
     
     #==============================================================================================
     # new ENV
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
+=======
+    #==============================================================================================
+    # new ENV
+    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=10,nMaxCache=2,loadENV = True)
+>>>>>>> 923ad7d161018389f3379ad058038d98b00e1d2c
     actMode = '1act'
     # Evaluation Phase
     lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
