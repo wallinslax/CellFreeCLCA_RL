@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torchviz import make_dot
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter('runs/fashion_mnist_experiment_1')
+#writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 #####################  hyper parameters  ####################
 # DDPG Parameter
 '''
