@@ -363,8 +363,9 @@ class BS(gym.Env):
             #print(connectionScore[u])
             #print(connectionScore[u].argsort())
             #print(connectionScore[u].argsort()[::-1][:self.L])
-            #bestLBS = connectionScore[u].argsort()[::-1][:self.L]
-            selectedBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
+            maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
+            positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
+            selectedBS = np.intersect1d(maxLBS,positiveBS)
             clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
@@ -701,7 +702,7 @@ if __name__ == "__main__":
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
-        env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=10,nMaxCache=2,loadENV = False)
+        env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
         actMode = '1act'
 
     # Build ENV
