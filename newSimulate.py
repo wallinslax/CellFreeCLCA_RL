@@ -75,35 +75,35 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
         phaseName = 'Preview Phase'
     
     plt.cla()
-    nXpt=len(poolEE_RL1act)
+    nXpt=len(poolEE_BM1)
     # plot DDPG 1act
     if poolEE_RL1act != None:
         plt.plot(range(nXpt),poolEE_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolEE_RL1act[-1])
-        plt.annotate(finalValue, (nXpt,poolEE_RL1act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='b')
+        plt.annotate(finalValue, (nXpt,poolEE_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolEE_RL2act != None:
         plt.plot(range(nXpt),poolEE_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolEE_RL2act[-1])
-        plt.annotate(finalValue, (nXpt,poolEE_RL2act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='r')
+        plt.annotate(finalValue, (nXpt,poolEE_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot Brute Force
     if EE_BF!=None:
         plt.plot(range(nXpt),EE_BF*np.ones(nXpt),'k-',label='Brute Force')
         finalValue = "{:.2f}".format(EE_BF)
-        plt.annotate(finalValue, (nXpt,EE_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+        plt.annotate(finalValue, (nXpt,EE_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
     #---------------------------------------------------------------------------------------------
     # plot BM1
     plt.plot(range(nXpt),poolEE_BM1,'g-',label='BM1')
     #plt.plot(poolEE_BM1[2000:],'g-',label='BM1')
     finalValue = "{:.2f}".format(poolEE_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolEE_BM1[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+    plt.annotate(finalValue, (nXpt,poolEE_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
     plt.plot(range(nXpt),poolEE_BM2,'y-',label='BM2')
     #plt.plot(poolEE_BM2[2000:],'y-',label='BM2')
     finalValue = "{:.2f}".format(poolEE_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolEE_BM2[-1]),textcoords="offset points",xytext=(0,-30),ha='center',color='y')
+    plt.annotate(finalValue, (nXpt,poolEE_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     plt.title(phaseName+': Energy Efficiency (EE)\n'+env.TopologyName) # title
     plt.ylabel("Bits/J") # y label
@@ -124,32 +124,32 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
     elif 'Preview' in filename:
         phaseName = 'Preview Phase'
     plt.cla()
-    nXpt=len(poolTP_RL1act)
+    nXpt=len(poolTP_BM1)
     # plot DDPG 1act
     if poolTP_RL1act != None:
         plt.plot(range(nXpt),poolTP_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolTP_RL1act[-1])
-        plt.annotate(finalValue, (nXpt,poolTP_RL1act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='b')
+        plt.annotate(finalValue, (nXpt,poolTP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolTP_RL2act != None:
         plt.plot(range(nXpt),poolTP_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolTP_RL2act[-1])
-        plt.annotate(finalValue, (nXpt,poolTP_RL2act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='r')
+        plt.annotate(finalValue, (nXpt,poolTP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     if TP_BF != None:
         plt.plot(range(nXpt),TP_BF*np.ones(nXpt),'k-',label='Brute Force')
         finalValue = "{:.2f}".format(TP_BF)
-        plt.annotate(finalValue, (nXpt,TP_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+        plt.annotate(finalValue, (nXpt,TP_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
     #---------------------------------------------------------------------------------------------
     # plot BM1
     plt.plot(range(nXpt),poolTP_BM1,'g-',label='BM1')
     finalValue = "{:.2f}".format(poolTP_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolTP_BM1[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+    plt.annotate(finalValue, (nXpt,poolTP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
     plt.plot(range(nXpt),poolTP_BM2,'y-',label='BM2')
     finalValue = "{:.2f}".format(poolTP_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolTP_BM2[-1]),textcoords="offset points",xytext=(0,-30),ha='center',color='y')
+    plt.annotate(finalValue, (nXpt,poolTP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     plt.title(phaseName+': Throughput\n'+env.TopologyName) # title
     plt.ylabel("Bits/s") # y label
@@ -170,33 +170,33 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
     elif 'Preview' in filename:
         phaseName = 'Preview Phase'
     plt.cla()
-    nXpt=len(poolPsys_RL1act)
+    nXpt=len(poolPsys_BM1)
     # plot DDPG 1act
     if poolPsys_RL1act != None:
         plt.plot(range(nXpt),poolPsys_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolPsys_RL1act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolPsys_RL1act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='b')
+        plt.annotate(finalValue, (nXpt,poolPsys_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolPsys_RL2act != None:
         plt.plot(range(nXpt),poolPsys_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolPsys_RL2act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolPsys_RL2act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='r')
+        plt.annotate(finalValue, (nXpt,poolPsys_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot Brute Force
     if Psys_BF != None:
         plt.plot(range(nXpt),Psys_BF*np.ones(nXpt),'k-',label='Brute Force')
         finalValue = "{:.2f}".format(Psys_BF)
-        plt.annotate(finalValue, (nXpt,Psys_BF),textcoords="offset points",xytext=(0,10),ha='center',color='k')
+        plt.annotate(finalValue, (nXpt,Psys_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
     #---------------------------------------------------------------------------------------------
     # plot BM1
     plt.plot(range(nXpt),poolPsys_BM1,'g-',label='BM1')
     finalValue = "{:.2f}".format(poolPsys_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolPsys_BM1[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+    plt.annotate(finalValue, (nXpt,poolPsys_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
     plt.plot(range(nXpt),poolPsys_BM2,'y-',label='BM2')
     finalValue = "{:.2f}".format(poolPsys_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolPsys_BM2[-1]),textcoords="offset points",xytext=(0,-30),ha='center',color='y')
+    plt.annotate(finalValue, (nXpt,poolPsys_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     plt.title(phaseName+': System Power Consumption\n'+env.TopologyName) # title
     plt.ylabel("W") # y label
@@ -217,27 +217,27 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
     elif 'Preview' in filename:
         phaseName = 'Preview Phase'
     plt.cla()
-    nXpt=len(poolMCAP_RL1act)
+    nXpt=len(poolMCAP_BM1)
     # plot DDPG 1act
     if poolMCAP_RL1act != None:
         plt.plot(range(nXpt),poolMCAP_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolMCAP_RL1act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCAP_RL1act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='b')
+        plt.annotate(finalValue, (nXpt,poolMCAP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolMCAP_RL2act != None:
         plt.plot(range(nXpt),poolMCAP_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolMCAP_RL2act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCAP_RL2act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='r')
+        plt.annotate(finalValue, (nXpt,poolMCAP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
     plt.plot(range(nXpt),poolMCAP_BM1,'g-',label='BM1')
     finalValue = "{:.2f}".format(poolMCAP_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolMCAP_BM1[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+    plt.annotate(finalValue, (nXpt,poolMCAP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
     plt.plot(range(nXpt),poolMCAP_BM2,'y-',label='BM2')
     finalValue = "{:.2f}".format(poolMCAP_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolMCAP_BM2[-1]),textcoords="offset points",xytext=(0,-30),ha='center',color='y')
+    plt.annotate(finalValue, (nXpt,poolMCAP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     plt.title(phaseName+': Miss Count of AP\n'+env.TopologyName) # title
     plt.ylabel("Counts") # y label
@@ -258,27 +258,27 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
     elif 'Preview' in filename:
         phaseName = 'Preview Phase'
     plt.cla()
-    nXpt=len(poolMCCPU_RL1act)
+    nXpt=len(poolMCCPU_BM1)
     # plot DDPG 1act
     if poolMCCPU_RL1act != None:
         plt.plot(range(nXpt),poolMCCPU_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolMCCPU_RL1act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCCPU_RL1act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='b')
+        plt.annotate(finalValue, (nXpt,poolMCCPU_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolMCCPU_RL2act != None:
         plt.plot(range(nXpt),poolMCCPU_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolMCCPU_RL2act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCCPU_RL2act[-1]),textcoords="offset points",xytext=(0,-10),ha='center',color='r')
+        plt.annotate(finalValue, (nXpt,poolMCCPU_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
     plt.plot(range(nXpt),poolMCCPU_BM1,'g-',label='BM1')
     finalValue = "{:.2f}".format(poolMCCPU_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolMCCPU_BM1[-1]),textcoords="offset points",xytext=(0,-20),ha='center',color='g')
+    plt.annotate(finalValue, (nXpt,poolMCCPU_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
     plt.plot(range(nXpt),poolMCCPU_BM2,'y-',label='BM2')
     finalValue = "{:.2f}".format(poolMCCPU_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolMCCPU_BM2[-1]),textcoords="offset points",xytext=(0,-30),ha='center',color='y')
+    plt.annotate(finalValue, (nXpt,poolMCCPU_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     plt.title(phaseName+': Miss Count of CPU\n'+env.TopologyName) # title
     plt.ylabel("Counts") # y label
@@ -299,7 +299,7 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
     elif 'Preview' in filename:
         phaseName = 'Preview Phase'
     plt.cla()
-    nXpt=len(poolHR_RL1act)
+    nXpt=len(poolHR_BM1)
     # plot DDPG 1act
     if poolHR_RL1act != None:
         plt.plot(range(nXpt),poolHR_RL1act,'b-',label='DDPG 1act')
@@ -782,7 +782,7 @@ if __name__ == '__main__':
     
     lossCountVec = []
     
-    for number in range(10):
+    for number in range(1):
         #####################  hyper parameters  ####################
         # DDPG Parameter
         SEED = number # random seed
@@ -791,28 +791,18 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(SEED)
         # new ENV
         env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-        actMode = '1act'
+        actMode = '2act'
         # Training Phase
-<<<<<<< HEAD
         lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number)  
-=======
-        lossCount = trainModel(env,actMode=actMode,changeReq=True, changeChannel=True, loadActor = False,number=number)  
->>>>>>> 923ad7d161018389f3379ad058038d98b00e1d2c
         lossCountVec.append(lossCount)
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
     print('lossCountVec=',lossCountVec)
-<<<<<<< HEAD
     
     #==============================================================================================
     # new ENV
     env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-=======
-    #==============================================================================================
-    # new ENV
-    env = BS(nBS=10,nUE=4,nMaxLink=2,nFile=10,nMaxCache=2,loadENV = True)
->>>>>>> 923ad7d161018389f3379ad058038d98b00e1d2c
-    actMode = '1act'
+    actMode = '2act'
     # Evaluation Phase
     lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
     filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'

@@ -360,12 +360,6 @@ class BS(gym.Env):
         #connectionScore = np.around(connectionScore)
         clustering_policy_UE = []
         for u in range(self.U): 
-<<<<<<< HEAD
-=======
-            #print(connectionScore[u])
-            #print(connectionScore[u].argsort())
-            #print(connectionScore[u].argsort()[::-1][:self.L])
->>>>>>> 923ad7d161018389f3379ad058038d98b00e1d2c
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
             positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
             selectedBS = np.intersect1d(maxLBS,positiveBS)
