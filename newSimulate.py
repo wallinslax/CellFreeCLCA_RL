@@ -728,7 +728,7 @@ def EvaluateModel(env,actMode, nItr=100, number=0):
 
         # Sample CL/CA Policy Visualization
         if ep == nItr/2:
-            filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
+            filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
             plot_UE_BS_distribution_Cache(env,CL_Policy_UE_RL,CA_Policy_BS_RL,EE_RL,filename+actMode+'_RL',isEPS=False)
             plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1,EE_BM1,filename+'BM1',isEPS=False)
             plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2,EE_BM2,filename+'BM2',isEPS=False)
@@ -736,7 +736,7 @@ def EvaluateModel(env,actMode, nItr=100, number=0):
         env.timeVariantChannel()
         #env.resetReq()
     # Save Line
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
+    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
     with open(filename+ actMode +'RL.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolMCAP_RL,poolMCCPU_RL,poolLossActor,poolLossCritic], f)
     with open(filename+'BM1.pkl', 'wb') as f:  
@@ -779,10 +779,9 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
     return EE_RL, RL_CLPolicy_UE,RL_CAPolicy_BS
 
 if __name__ == '__main__':
-    
+    actMode = '1act'
     lossCountVec = []
-    
-    for number in range(1):
+    for number in range(10):
         #####################  hyper parameters  ####################
         # DDPG Parameter
         SEED = number # random seed
@@ -790,24 +789,19 @@ if __name__ == '__main__':
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # new ENV
-        env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-        actMode = '2act'
+        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
         # Training Phase
-        lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number)  
-        lossCountVec.append(lossCount)
+        #lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-    print('lossCountVec=',lossCountVec)
-    
-    #==============================================================================================
-    # new ENV
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-    actMode = '2act'
-    # Evaluation Phase
-    lossCount = EvaluateModel(env,actMode=actMode, nItr=100)
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
-    plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-    print('\n lossCount=',lossCount)
+        #==============================================================================================
+        # new ENV
+        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
+        # Evaluation Phase
+        #lossCount = EvaluateModel(env,actMode=actMode, nItr=100,number=number)
+        #lossCountVec.append(lossCount)
+        filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
 
 
     #==============================================================================================

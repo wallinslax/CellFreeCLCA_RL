@@ -361,9 +361,9 @@ class BS(gym.Env):
         clustering_policy_UE = []
         for u in range(self.U): 
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
-            positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ]
-            selectedBS = np.intersect1d(maxLBS,positiveBS)
-            clustering_policy_UE.append(selectedBS)
+            positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ] # unlimited
+            selectedBS = np.intersect1d(maxLBS,positiveBS) # L=2
+            clustering_policy_UE.append(positiveBS)
         
         # Convert action value to policy //Caching Part
         cacheScore = np.reshape(a_ca, (self.B,self.F) )
@@ -706,7 +706,7 @@ if __name__ == "__main__":
     # Build ENV
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
     #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
+    env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
 
     #------------------------------------------------------------------------------------------------
     # Benchmark 1 snrCL_popCA
