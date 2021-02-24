@@ -62,8 +62,10 @@ def UE_SBS_location_distribution(lambda0): #PPP
     points = np.random.rand(numbPoints, 2)-0.5
     return points
 
-def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,filename,isEPS=False):
+def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,filename,isDetail=False,isEPS=False):
     #drive, path_and_file = os.path.splitdrive(filename)
+    #print(filename.split('_')[-1])
+    methodName = filename.split('_')[-1]
     path, filenameO = os.path.split(filename)
     if 'Training' in filename:
         phaseName = 'Training Phase'
@@ -102,17 +104,27 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
         plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u))
         #plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.04),color=color[u])#label index
         #plt.annotate("%s" % 'UE'+str(u)+' ['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.05, yy_u+0.015),color=color[u])
+        # plot Request
         plt.annotate("%s" % '['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u+0.015),color=color[u])
+        if isDetail:
+            EE=env.calEE(clustering_policy_UE,caching_policy_BS)
+            # plot P_r
+            plt.annotate("%s" % 'P_r='+str( "{:.2f}".format(env.P_r[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.03),color=color[u])
+            # plot I
+            plt.annotate("%s" % 'I='+str( "{:.2f}".format(env.I[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.06),color=color[u])
+            # plot SINR
+            plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u])
+        # plot Clustering
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
             for bs in useBS:
                 xx_bs = env.bs_coordinate[bs,0]
                 yy_bs = env.bs_coordinate[bs,1]
                 plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='-',color=color[u])
-            
+    
     plt.xlabel("x (km)"); plt.ylabel("y (km)")
     EE = "{:.2f}".format(EE)
-    plt.title('Policy Visulization\n'+ filenameO +'\n Sampled EE:'+str(EE))
+    plt.title('Policy Visulization\n'+methodName+' Sampled EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
     plt.legend()
@@ -206,7 +218,8 @@ class BS(gym.Env):
         for u in range(self.U):
             self.Req[u] = self.genUserRequest(self.userPreference[u])
 
-    def __init__(self,nBS,nUE,nMaxLink,nFile,nMaxCache,loadENV):
+    def __init__(self,nBS,nUE,nMaxLink,nFile,nMaxCache,loadENV,SEED=0):
+        self.SEED=SEED
         self.B = nBS # number of BS
         self.U = nUE # number of UE
         self.L = nMaxLink # Max Link Capability of UE
@@ -215,7 +228,7 @@ class BS(gym.Env):
         self.TopologyName = str(self.B)+'AP_'+str(self.U)+'UE_' + str(self.F) + 'File_'+ str(self.N) +'Cache_'
         self.TopologyCode = str(self.B)+'.'+str(self.U)+'.' + str(self.F) + '.'+ str(self.N)
         self.epsilon = 0.01
-        filename = 'data/Topology/Topology_'+ self.TopologyName #+ str(today)
+        filename = 'data/Topology/['+str(self.SEED)+']Topology_'+ self.TopologyName #+ str(today)
         if(loadENV):# load Topology
             with open(filename + '.pkl','rb') as f: 
                 self.bs_coordinate, self.u_coordinate, self.pl, self.h,  self.g, self.userPreference, self.Req = pickle.load(f)
@@ -239,7 +252,7 @@ class BS(gym.Env):
             self.Req = np.zeros(self.U,dtype=int)
             self.resetReq()
             # check topology
-            plot_UE_BS_distribution_Cache(self,None,None,0,filename,isEPS=True)
+            plot_UE_BS_distribution_Cache(self,None,None,0,filename,isEPS=False)
             # save Topology
             '''
             np.savez(filename+'_np',bs_coordinate= self.bs_coordinate, u_coordinate= self.u_coordinate, pl = self.pl, h=self.h, g=self.g, userPreference=self.userPreference, Req=self.Req)
@@ -665,9 +678,10 @@ class BS(gym.Env):
                 subBestEE,subOpt_clustering_policy_UE,subOpt_caching_policy_BS = future.result()
                 if subBestEE>bestEE:
                     bestEE = subBestEE
+                    print('new Record EE:',bestEE)
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
-        filenameBF = 'data/'+self.TopologyCode+'/BF/BF_'+self.TopologyName + str(today)
+        filenameBF = 'data/'+self.TopologyCode+'/BF/['+str(self.SEED)+']BF_'+self.TopologyName
         if isSave:
             # Save the whole environment with Optimal Clustering and Optimal Caching
             with open(filenameBF+'.pkl', 'wb') as f:  
@@ -694,27 +708,24 @@ class BS(gym.Env):
         pass
 
 if __name__ == "__main__":
-    for i in range(100):
+    for i in range(2,3):
         # DDPG Parameter
-        SEED = i # random seed
+        SEED =  i# random seed
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
-        env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-        actMode = '1act'
-
-    # Build ENV
-    #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=50,nMaxCache=5,loadENV = True)
-    #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
-    env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
-
+        # Build ENV
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
+        #env = BS(nBS=40,nUE=10,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+        #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
+    filename = 'data/'+env.TopologyCode+'/BF/['+str(env.SEED)+']Topology_'+ env.TopologyName
+    plot_UE_BS_distribution_Cache(env,None,None,0,filename,isEPS=False)
     #------------------------------------------------------------------------------------------------
     # Benchmark 1 snrCL_popCA
     EE_BM1, SNR_CL_Policy_UE, POP_CA_Policy_BS, bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
     TP_BM1 = sum(env.Throughput)
     Psys_BM1 = env.P_sys/1000 # mW->W
     HR_BM1 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
-
     #filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+ env.TopologyName +'_Evaluation_'
     #plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE,POP_CA_Policy_BS,EE_BM1,filename,isEPS=True)
     #------------------------------------------------------------------------------------------------
@@ -727,13 +738,14 @@ if __name__ == "__main__":
     HR_BM2 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    #EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
+    EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
     #------------------------------------------------------------------------------------------------
     # Load the whole environment with Optimal Clustering and Optimal Caching   
-    filenameBF = 'data/4.4.5.2/BF/BF_4AP_4UE_5File_2Cache_2021-01-22'
-    #filenameBF = 'data/'+env.TopologyCode+'/BF/BF_'+env.TopologyName + str(today)
+    filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']BF_'+env.TopologyName
     with open(filenameBF+'.pkl','rb') as f: 
-        env, EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = pickle.load(f)
+        envX, EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = pickle.load(f)
     # Plot
-    plot_UE_BS_distribution_Cache(env,BF_CL_Policy_UE,BF_CA_Policy_BS,EE_BF,filenameBF,isEPS=True)
+    plot_UE_BS_distribution_Cache(envX,BF_CL_Policy_UE,BF_CA_Policy_BS,EE_BF,filenameBF,isDetail=True,isEPS=False)
+    EE_RL=envX.calEE(BF_CL_Policy_UE,BF_CA_Policy_BS)
+    print('EE_RL=',EE_RL)
         
