@@ -32,7 +32,7 @@ LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
 
-MAX_EPISODES = 10**2*10
+MAX_EPISODES = 10**2*5
 MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
@@ -795,19 +795,19 @@ if __name__ == '__main__':
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # new ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
         # Training Phase
-        lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
+        lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         #==============================================================================================
         # new ENV
-        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
         # Evaluation Phase
         #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
         #lossCountVec.append(lossCount)
-        filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        #filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+        #plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
     
     #==============================================================================================
     '''
@@ -832,8 +832,14 @@ if __name__ == '__main__':
         env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
     with open(filename+'BM2.pkl', 'rb') as f:  
         env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
+    print(CL_Policy_UE_RL)
     EE_RL=env.calEE(CL_Policy_UE_RL,CA_Policy_BS_RL)
+    print('env.I[1]=',env.I[1])
 
+    CL_Policy_UE_RL[1].remove(5)
+    print(CL_Policy_UE_RL)
+    EE_RL=env.calEE(CL_Policy_UE_RL,CA_Policy_BS_RL)
+    print('env.I[1]=',env.I[1])
     plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=True,isEPS=False)
     plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=True,isEPS=False)
     plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=True,isEPS=False)

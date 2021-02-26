@@ -497,9 +497,12 @@ class BS(gym.Env):
 
         '''[8] Activated BS set: S = Union S_u'''
         activatedBS = np.nonzero(self.rho)[0]
-
+        
         '''[9] Interference I'''
         self.I = np.zeros(self.U)
+        #***DEBUG***
+        #print('self.rho=',self.rho)
+        #***DEBUG***
         for u in range(self.U):
             other_u = list(range(self.U))
             other_u.remove(u)
@@ -508,7 +511,16 @@ class BS(gym.Env):
                 for b in activatedBS:# set S != all BS
                     #chk = self.g[b][u] * self.g[b][uu].conjugate()
                     #print(chk)
+                    #***DEBUG***
+                    #Ibuu=np.sqrt(self.rho[b]) * self.g[b][u] * self.g[b][uu].conjugate()
+                    #print('For',u,'th UE: Ibuu from',b,'th AP to',uu,'th UE=',Ibuu)
+                    #print('For',u,'th UE: Ibuu from',b,'th AP to',uu,'th UE=',np.power(abs(Ibuu),2))
+                    #***DEBUG***
                     sum_b +=  np.sqrt(self.rho[b]) * self.g[b][u] * self.g[b][uu].conjugate()
+                #***DEBUG***
+                #print('For',u,'th UE: sum_b=',sum_b)
+                #print('For',u,'th UE: sum_b from',uu,'th UE=',sum_b)
+                #***DEBUG***
                 self.I[u] = self.I[u] + np.power(abs(sum_b),2)
         
         '''[10] SINR/ [8]Throughput of UE'''
@@ -708,7 +720,7 @@ class BS(gym.Env):
         pass
 
 if __name__ == "__main__":
-    for i in range(2,3):
+    for i in range(0,1):
         # DDPG Parameter
         SEED =  i# random seed
         np.random.seed(SEED)
