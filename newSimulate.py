@@ -73,8 +73,8 @@ def plotlist(listA,listName): # for debugging.
     plt.grid()
     fig = plt.gcf()
     fig.savefig( listName +'.png', format='png',dpi=200)
-#1
-def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,poolEE_BM2=None,EE_BF=None,isEPS=False):
+#1 EE
+def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,poolEE_BM2=None,poolEE_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -84,34 +84,33 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     
     plt.cla()
     nXpt=len(poolEE_BM1)
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if poolEE_BF!=None:
+        plt.plot(range(nXpt),poolEE_BF,'k-',label='Brute Force')
+        finalValue = "{:.2f}".format(poolEE_BF[-1])
+        #plt.annotate(finalValue, (nXpt,poolEE_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if poolEE_RL1act != None:
         plt.plot(range(nXpt),poolEE_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolEE_RL1act[-1])
-        plt.annotate(finalValue, (nXpt,poolEE_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
+        #plt.annotate(finalValue, (nXpt,poolEE_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolEE_RL2act != None:
         plt.plot(range(nXpt),poolEE_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolEE_RL2act[-1])
-        plt.annotate(finalValue, (nXpt,poolEE_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
-    #---------------------------------------------------------------------------------------------
-    # plot Brute Force
-    if EE_BF!=None:
-        plt.plot(range(nXpt),EE_BF*np.ones(nXpt),'k-',label='Brute Force')
-        finalValue = "{:.2f}".format(EE_BF)
-        plt.annotate(finalValue, (nXpt,EE_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+        #plt.annotate(finalValue, (nXpt,poolEE_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
-    plt.plot(range(nXpt),poolEE_BM1,'g-',label='BM1')
-    #plt.plot(poolEE_BM1[2000:],'g-',label='BM1')
+    plt.plot(range(nXpt),poolEE_BM1,'g--',label='BM1')
     finalValue = "{:.2f}".format(poolEE_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolEE_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
+    #plt.annotate(finalValue, (nXpt,poolEE_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
-    plt.plot(range(nXpt),poolEE_BM2,'y-',label='BM2')
-    #plt.plot(poolEE_BM2[2000:],'y-',label='BM2')
+    plt.plot(range(nXpt),poolEE_BM2,'y-.',label='BM2')
     finalValue = "{:.2f}".format(poolEE_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolEE_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+    #plt.annotate(finalValue, (nXpt,poolEE_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Energy Efficiency (EE)\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Bits/J") # y label
@@ -124,8 +123,8 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     fig.savefig(filename + '_EE.png', format='png',dpi=120)
     if isEPS:
         fig.savefig(filename + '_EE.eps', format='eps',dpi=120)
-#2
-def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,poolTP_BM2=None,TP_BF=None,isEPS=False):
+#2 TP
+def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,poolTP_BM2=None,poolTP_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -134,31 +133,32 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
         phaseName = 'Preview Phase'
     plt.cla()
     nXpt=len(poolTP_BM1)
+    #---------------------------------------------------------------------------------------------
+    if poolTP_BF != None:
+        plt.plot(range(nXpt),poolTP_BF,'k-',label='Brute Force')
+        finalValue = "{:.2f}".format(poolTP_BF[-1])
+        #plt.annotate(finalValue, (nXpt,poolTP_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if poolTP_RL1act != None:
         plt.plot(range(nXpt),poolTP_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolTP_RL1act[-1])
-        plt.annotate(finalValue, (nXpt,poolTP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
+        #plt.annotate(finalValue, (nXpt,poolTP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolTP_RL2act != None:
         plt.plot(range(nXpt),poolTP_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolTP_RL2act[-1])
-        plt.annotate(finalValue, (nXpt,poolTP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
-    #---------------------------------------------------------------------------------------------
-    if TP_BF != None:
-        plt.plot(range(nXpt),TP_BF*np.ones(nXpt),'k-',label='Brute Force')
-        finalValue = "{:.2f}".format(TP_BF)
-        plt.annotate(finalValue, (nXpt,TP_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+        #plt.annotate(finalValue, (nXpt,poolTP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
-    plt.plot(range(nXpt),poolTP_BM1,'g-',label='BM1')
+    plt.plot(range(nXpt),poolTP_BM1,'g--',label='BM1')
     finalValue = "{:.2f}".format(poolTP_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolTP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
+    #plt.annotate(finalValue, (nXpt,poolTP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
-    plt.plot(range(nXpt),poolTP_BM2,'y-',label='BM2')
+    plt.plot(range(nXpt),poolTP_BM2,'y-.',label='BM2')
     finalValue = "{:.2f}".format(poolTP_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolTP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+    #plt.annotate(finalValue, (nXpt,poolTP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Throughput\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Bits/s") # y label
@@ -171,8 +171,8 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
     fig.savefig(filename + '_Throughput.png', format='png',dpi=120)
     if isEPS:
         fig.savefig(filename + '_Throughput.eps', format='eps',dpi=120)
-#3
-def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1=None,poolPsys_BM2=None,Psys_BF=None,isEPS=False):
+#3 Psys
+def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1=None,poolPsys_BM2=None,poolPsys_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -181,6 +181,13 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
         phaseName = 'Preview Phase'
     plt.cla()
     nXpt=len(poolPsys_BM1)
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if poolPsys_BF != None:
+        plt.plot(range(nXpt),poolPsys_BF,'k-',label='Brute Force')
+        finalValue = "{:.2f}".format(poolPsys_BF[-1])
+        #plt.annotate(finalValue, (nXpt,poolPsys_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if poolPsys_RL1act != None:
         plt.plot(range(nXpt),poolPsys_RL1act,'b-',label='DDPG 1act')
@@ -193,18 +200,12 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
         finalValue = "{:.2f}".format(poolPsys_RL2act[-1]) 
         plt.annotate(finalValue, (nXpt,poolPsys_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
-    # plot Brute Force
-    if Psys_BF != None:
-        plt.plot(range(nXpt),Psys_BF*np.ones(nXpt),'k-',label='Brute Force')
-        finalValue = "{:.2f}".format(Psys_BF)
-        plt.annotate(finalValue, (nXpt,Psys_BF),textcoords="offset points",xytext=(20,10),ha='center',color='k')
-    #---------------------------------------------------------------------------------------------
     # plot BM1
-    plt.plot(range(nXpt),poolPsys_BM1,'g-',label='BM1')
+    plt.plot(range(nXpt),poolPsys_BM1,'g--',label='BM1')
     finalValue = "{:.2f}".format(poolPsys_BM1[-1])
     plt.annotate(finalValue, (nXpt,poolPsys_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
-    plt.plot(range(nXpt),poolPsys_BM2,'y-',label='BM2')
+    plt.plot(range(nXpt),poolPsys_BM2,'y-.',label='BM2')
     finalValue = "{:.2f}".format(poolPsys_BM2[-1])
     plt.annotate(finalValue, (nXpt,poolPsys_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
@@ -219,8 +220,8 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
     fig.savefig(filename + '_Psys.png', format='png',dpi=120)
     if isEPS:
         fig.savefig(filename + '_Psys.eps', format='eps',dpi=120)
-#4
-def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1=None,poolMCAP_BM2=None,isEPS=False):
+#4 MCAP
+def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1=None,poolMCAP_BM2=None,poolMCAP_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -229,26 +230,33 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
         phaseName = 'Preview Phase'
     plt.cla()
     nXpt=len(poolMCAP_BM1)
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if poolMCAP_BF != None:
+        plt.plot(range(nXpt),poolMCAP_BF,'k-',label='Brute Force')
+        finalValue = "{:.2f}".format(poolMCAP_BF[-1])
+        #plt.annotate(finalValue, (nXpt,poolMCAP_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if poolMCAP_RL1act != None:
         plt.plot(range(nXpt),poolMCAP_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolMCAP_RL1act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCAP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
+        #plt.annotate(finalValue, (nXpt,poolMCAP_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolMCAP_RL2act != None:
         plt.plot(range(nXpt),poolMCAP_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolMCAP_RL2act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCAP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
+        #plt.annotate(finalValue, (nXpt,poolMCAP_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
-    plt.plot(range(nXpt),poolMCAP_BM1,'g-',label='BM1')
+    plt.plot(range(nXpt),poolMCAP_BM1,'g--',label='BM1')
     finalValue = "{:.2f}".format(poolMCAP_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolMCAP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
+    #plt.annotate(finalValue, (nXpt,poolMCAP_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
-    plt.plot(range(nXpt),poolMCAP_BM2,'y-',label='BM2')
+    plt.plot(range(nXpt),poolMCAP_BM2,'y-.',label='BM2')
     finalValue = "{:.2f}".format(poolMCAP_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolMCAP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+    #plt.annotate(finalValue, (nXpt,poolMCAP_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Miss Count of AP\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Counts") # y label
@@ -262,7 +270,7 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
     if isEPS:
         fig.savefig(filename + '_MCAP.eps', format='eps',dpi=120)
 #5
-def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU_BM1=None,poolMCCPU_BM2=None,isEPS=False):
+def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU_BM1=None,poolMCCPU_BM2=None,poolMCCPU_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -271,26 +279,33 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
         phaseName = 'Preview Phase'
     plt.cla()
     nXpt=len(poolMCCPU_BM1)
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if poolMCCPU_BF != None:
+        plt.plot(range(nXpt),poolMCCPU_BF,'k-',label='Brute Force')
+        finalValue = "{:.2f}".format(poolMCCPU_BF[-1])
+        #plt.annotate(finalValue, (nXpt,poolMCCPU_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if poolMCCPU_RL1act != None:
         plt.plot(range(nXpt),poolMCCPU_RL1act,'b-',label='DDPG 1act')
         finalValue = "{:.2f}".format(poolMCCPU_RL1act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCCPU_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
+        #plt.annotate(finalValue, (nXpt,poolMCCPU_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if poolMCCPU_RL2act != None:
         plt.plot(range(nXpt),poolMCCPU_RL2act,'r-',label='DDPG 2act')
         finalValue = "{:.2f}".format(poolMCCPU_RL2act[-1]) 
-        plt.annotate(finalValue, (nXpt,poolMCCPU_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
+        #plt.annotate(finalValue, (nXpt,poolMCCPU_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
     # plot BM1
-    plt.plot(range(nXpt),poolMCCPU_BM1,'g-',label='BM1')
+    plt.plot(range(nXpt),poolMCCPU_BM1,'g--',label='BM1')
     finalValue = "{:.2f}".format(poolMCCPU_BM1[-1])
-    plt.annotate(finalValue, (nXpt,poolMCCPU_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
+    #plt.annotate(finalValue, (nXpt,poolMCCPU_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
     # plot BM2
-    plt.plot(range(nXpt),poolMCCPU_BM2,'y-',label='BM2')
+    plt.plot(range(nXpt),poolMCCPU_BM2,'y-.',label='BM2')
     finalValue = "{:.2f}".format(poolMCCPU_BM2[-1])
-    plt.annotate(finalValue, (nXpt,poolMCCPU_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+    #plt.annotate(finalValue, (nXpt,poolMCCPU_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Miss Count of CPU\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Counts") # y label
@@ -304,7 +319,7 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
     if isEPS:
         fig.savefig(filename + '_MCCPU.eps', format='eps',dpi=120)
 #6
-def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,poolHR_BM2=None,HR_BF=None,isEPS=False):
+def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,poolHR_BM2=None,poolHR_BF=None,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -313,19 +328,20 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
         phaseName = 'Preview Phase'
     plt.cla()
     nXpt=len(poolHR_BM1)
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if poolHR_BF != None:
+        plt.plot(range(nXpt),poolHR_BF,'k-',label='Brute Force')
     # plot DDPG 1act
     if poolHR_RL1act != None:
         plt.plot(range(nXpt),poolHR_RL1act,'b-',label='DDPG 1act')
     # plot DDPG 2act
     if poolHR_RL2act != None:
         plt.plot(range(nXpt),poolHR_RL2act,'r-',label='DDPG 2act')
-    # plot Brute Force
-    if HR_BF != None:
-        plt.plot(range(nXpt),HR_BF*np.ones(nXpt),'k-',label='Brute Force')
     # plot BM1
-    plt.plot(range(nXpt),poolHR_BM1,'g-',label='BM1')
+    plt.plot(range(nXpt),poolHR_BM1,'g--',label='BM1')
     # plot BM2
-    plt.plot(range(nXpt),poolHR_BM2,'y-',label='BM2')   
+    plt.plot(range(nXpt),poolHR_BM2,'y-.',label='BM2')   
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Hit Rate (HR) \n Topology:'+env.TopologyCode) # title
     plt.ylabel("Ratio") # y label
@@ -339,7 +355,7 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
     if isEPS:
         fig.savefig(filename + '_HR.eps', format='eps',dpi=120)
 
-def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPsys=False,isPlotHR=False,isEPS=False):
+def plotHistory(env,filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPsys=False,isPlotHR=False,isEPS=False):
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
@@ -348,6 +364,13 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
         phaseName = 'Preview'
     
     # Initialization
+    poolEE_BF = None
+    poolTP_BF = None
+    poolPsys_BF = None
+    poolHR_BF = None
+    poolMCAP_BF = None
+    poolMCCPU_BF = None
+
     poolEE_RL1act=None
     poolTP_RL1act=None
     poolPsys_RL1act=None
@@ -371,6 +394,13 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
     Psys_BF=None
     HR_BF=None
 
+    #---------------------------------------------------------------------------------------------
+    # Load Brute Force Policy
+    env.B=5
+    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+        with open(filename+ 'BF.pkl', 'wb') as f:  
+            pickle.dump([env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF], f)
+    #---------------------------------------------------------------------------------------------
     file_1act = filename+ '1act' +'RL.pkl'
     file_2act = filename+ '2act' +'RL.pkl'
     if os.path.isfile(file_1act):
@@ -385,19 +415,6 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
         env, poolEE_BM1,poolTP_BM1,poolPsys_BM1,poolHR_BM1,poolMCAP_BM1,poolMCCPU_BM1 = pickle.load(f)
     with open(filename+'BM2.pkl','rb') as f:
         env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolMCAP_BM2,poolMCCPU_BM2 = pickle.load(f)
-    #---------------------------------------------------------------------------------------------
-    # Load Brute Force Policy
-    env.B=5
-    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
-        # Load Optimal clustering and caching Policy
-        filenameBF = 'data/4.4.5.2/BF/BF_4AP_4UE_5File_2Cache_2021-01-06'
-        with open(filenameBF+'.pkl','rb') as f: 
-            envBF, EE_BF, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
-        envBF.calEE(opt_clustering_policy_UE, opt_caching_policy_BS)
-        EE_BF = envBF.EE
-        TP_BF= sum(envBF.Throughput)
-        Psys_BF = envBF.P_sys/1000 # mW->W
-        HR_BF = envBF.calHR(opt_clustering_policy_UE, opt_caching_policy_BS)
     #---------------------------------------------------------------------------------------------
     if isPlotLoss:
         # plot RL: poolLossCritic/poolLossActor
@@ -420,18 +437,18 @@ def plotHistory(filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPlotPs
             fig.savefig(filename + '_Loss.eps', format='eps',dpi=120)
     #---------------------------------------------------------------------------------------------
     if isPlotEE:
-        plotEE(env,filename,poolEE_RL1act=poolEE_RL1act,poolEE_RL2act=poolEE_RL2act,poolEE_BM1=poolEE_BM1,poolEE_BM2=poolEE_BM2,EE_BF=EE_BF,isEPS=isEPS)
-        plotMCAP(env,filename,poolMCAP_RL1act=poolMCAP_RL1act,poolMCAP_RL2act=poolMCAP_RL2act,poolMCAP_BM1=poolMCAP_BM1,poolMCAP_BM2=poolMCAP_BM2,isEPS=isEPS)
-        plotMCCPU(env,filename,poolMCCPU_RL1act=poolMCCPU_RL1act,poolMCCPU_RL2act=poolMCCPU_RL2act,poolMCCPU_BM1=poolMCCPU_BM1,poolMCCPU_BM2=poolMCCPU_BM2,isEPS=isEPS)
+        plotEE(env,filename,poolEE_RL1act=poolEE_RL1act,poolEE_RL2act=poolEE_RL2act,poolEE_BM1=poolEE_BM1,poolEE_BM2=poolEE_BM2,poolEE_BF=poolEE_BF,isEPS=isEPS)
+        plotMCAP(env,filename,poolMCAP_RL1act=poolMCAP_RL1act,poolMCAP_RL2act=poolMCAP_RL2act,poolMCAP_BM1=poolMCAP_BM1,poolMCAP_BM2=poolMCAP_BM2,poolMCAP_BF=poolMCAP_BF,isEPS=isEPS)
+        plotMCCPU(env,filename,poolMCCPU_RL1act=poolMCCPU_RL1act,poolMCCPU_RL2act=poolMCCPU_RL2act,poolMCCPU_BM1=poolMCCPU_BM1,poolMCCPU_BM2=poolMCCPU_BM2,poolMCCPU_BF=poolMCCPU_BF,isEPS=isEPS)
     #---------------------------------------------------------------------------------------------
     if isPlotTP:
-        plotTP(env,filename,poolTP_RL1act=poolTP_RL1act,poolTP_RL2act=poolTP_RL2act,poolTP_BM1=poolTP_BM1,poolTP_BM2=poolTP_BM2,TP_BF=TP_BF,isEPS=isEPS)
+        plotTP(env,filename,poolTP_RL1act=poolTP_RL1act,poolTP_RL2act=poolTP_RL2act,poolTP_BM1=poolTP_BM1,poolTP_BM2=poolTP_BM2,poolTP_BF=poolTP_BF,isEPS=isEPS)
     #---------------------------------------------------------------------------------------------
     if isPlotPsys:
-        plotPsys(env,filename,poolPsys_RL1act=poolPsys_RL1act,poolPsys_RL2act=poolPsys_RL2act,poolPsys_BM1=poolPsys_BM1,poolPsys_BM2=poolPsys_BM2,Psys_BF=Psys_BF,isEPS=isEPS)  
+        plotPsys(env,filename,poolPsys_RL1act=poolPsys_RL1act,poolPsys_RL2act=poolPsys_RL2act,poolPsys_BM1=poolPsys_BM1,poolPsys_BM2=poolPsys_BM2,poolPsys_BF=poolPsys_BF,isEPS=isEPS)  
     #---------------------------------------------------------------------------------------------
     if isPlotHR:
-        plotHR(env,filename,poolHR_RL1act=poolHR_RL1act,poolHR_RL2act=poolHR_RL2act,poolHR_BM1=poolHR_BM1,poolHR_BM2=poolHR_BM2,HR_BF=HR_BF,isEPS=isEPS)
+        plotHR(env,filename,poolHR_RL1act=poolHR_RL1act,poolHR_RL2act=poolHR_RL2act,poolHR_BM1=poolHR_BM1,poolHR_BM2=poolHR_BM2,poolHR_BF=poolHR_BF,isEPS=isEPS)
 
 def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
     # new ACT 
@@ -668,7 +685,14 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         ddpg_s = DDPG(obs_dim = env.dimObs, act_dim = env.dimAct,memMaxSize=20000)###
         # load Model
         ddpg_s.loadModel(modelPath = modelPath, modelName= '['+ str(number) +']'+ actMode)
-    
+    # BF
+    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+        poolEE_BF=[]
+        poolTP_BF = []
+        poolPsys_BF = []
+        poolHR_BF=[]
+        poolMCAP_BF = [] # MCAP = miss file count at APs
+        poolMCCPU_BF = [] # MCCPU = miss file count at CPU
     # RL
     poolEE_RL=[]
     poolTP_RL = []
@@ -736,11 +760,26 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         poolHR_BM2.append(HR_BM2)
         poolMCAP_BM2.append(env.missCounterAP)
         poolMCCPU_BM2.append(env.missCounterCPU)
-
+        # BF
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+            EE_BF, CL_Policy_UE_BF, CA_Policy_BS_BF = env.getOptEE_BF(isSave=True)
+            TP_BF = sum(env.Throughput)
+            Psys_BF = env.P_sys/1000 # mW->W
+            HR_BF = env.calHR(CL_Policy_UE_BF,CA_Policy_BS_BF)
+            poolEE_BF.append(EE_BF)
+            poolTP_BF.append(TP_BF)
+            poolPsys_BF.append(Psys_BF)
+            poolHR_BF.append(HR_BF)
+            poolMCAP_BF.append(env.missCounterAP)
+            poolMCCPU_BF.append(env.missCounterCPU)
         # Sample CL/CA Policy Visualization
         if ep == nItr/2:
             filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
-            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isEPS=True)
+            if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+                plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF,filename+'BF',isEPS=True)
+                with open(filename+ actMode +'RL.pkl', 'wb') as f:  
+                    pickle.dump([env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF], f)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'RL',isEPS=True)
             plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=True)
             plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=True)
             with open(filename+ actMode +'RL.pkl', 'wb') as f:  
@@ -754,6 +793,9 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         #env.resetReq()
     # Save Line
     filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+        with open(filename+ 'BF.pkl', 'wb') as f:  
+            pickle.dump([env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF], f)
     with open(filename+ actMode +'RL.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolMCAP_RL,poolMCCPU_RL,poolLossActor,poolLossCritic], f)
     with open(filename+'BM1.pkl', 'wb') as f:  
@@ -796,10 +838,9 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
     return EE_RL, RL_CLPolicy_UE,RL_CAPolicy_BS
 
 if __name__ == '__main__':
-    '''
     actMode = '1act'
     lossCountVec = []
-    for number in range(10):
+    for number in range(0,1):
         #####################  hyper parameters  ####################
         # DDPG Parameter
         SEED = number # random seed
@@ -807,22 +848,23 @@ if __name__ == '__main__':
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
+        '''
         # Training Phase
-        #lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
+        lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
-        plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        plotHistory(env,filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+        '''
         #==============================================================================================
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         # Evaluation Phase
-        #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
+        lossCount = evaluateModel(env,actMode=actMode, nItr=10,number=number)
         #lossCountVec.append(lossCount)
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-    '''
+        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
     #==============================================================================================
     '''
     # plot Evaluation Final for 4.4.5.2
@@ -853,7 +895,6 @@ if __name__ == '__main__':
     plot_UE_BS_distribution_Cache(env,None,None,0,filename,isEPS=False)
     '''
     #==============================================================================================    
-    
     # plot Evaluation Final for 10.5.20.2
     actMode = '1act'
     number = 6
@@ -864,7 +905,7 @@ if __name__ == '__main__':
     # new ENV
     env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
     #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
-    # plot EE
+    # plot Performance
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
     plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
     # plot PV
