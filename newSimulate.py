@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 import numpy as np
 import time,copy,os,csv,random,pickle
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['agg.path.chunksize'] = 90000
@@ -37,7 +38,14 @@ MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
 #####################################
-#def drewNetwork(model,input):
+# plot size
+font = {'family' : 'Verdana',
+        'weight' : 'bold',
+        'size'   : 14}
+
+matplotlib.rc('font', **font)
+markerSize = 20*4**1
+#####################################
 def plotMetric(poolEE,poolBestEE):
     xScale = 100
     x = range( len(poolEE[-xScale:]) )
@@ -111,6 +119,7 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_EE.png', format='png',dpi=120)
     if isEPS:
@@ -157,6 +166,7 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_Throughput.png', format='png',dpi=120)
     if isEPS:
@@ -204,6 +214,7 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_Psys.png', format='png',dpi=120)
     if isEPS:
@@ -245,6 +256,7 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_MCAP.png', format='png',dpi=120)
     if isEPS:
@@ -286,6 +298,7 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_MCCPU.png', format='png',dpi=120)
     if isEPS:
@@ -320,6 +333,7 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
     plt.grid()
     plt.legend()
     plt.axis([0, nXpt, 0, 1.1])
+    plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_HR.png', format='png',dpi=120)
     if isEPS:
@@ -643,7 +657,6 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
 
 def evaluateModel(env,actMode, nItr=100, number=0):
     # new ACT 
-    modelPath = 'D:\\/Model/' + env.TopologyName+'/'
     modelPath = 'data/'+env.TopologyCode+'/Model/'
     if actMode == '2act':
         ddpg_cl = DDPG(obs_dim = env.dimObs, act_dim = env.dimActCL,memMaxSize=20000)
@@ -689,7 +702,6 @@ def evaluateModel(env,actMode, nItr=100, number=0):
             EE_RL, CL_Policy_UE_RL, CA_Policy_BS_RL = getEE_RL(env,actMode = actMode,ddpg_cl=ddpg_cl,ddpg_ca=ddpg_ca)
         elif actMode == '1act':
             EE_RL, CL_Policy_UE_RL, CA_Policy_BS_RL = getEE_RL(env,actMode = actMode,ddpg_s=ddpg_s)
-        
         TP_RL = sum(env.Throughput)
         Psys_RL = env.P_sys/1000
         HR_RL = env.calHR(CL_Policy_UE_RL,CA_Policy_BS_RL)
@@ -728,9 +740,9 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         # Sample CL/CA Policy Visualization
         if ep == nItr/2:
             filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
-            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isEPS=False)
-            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=False)
-            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=False)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isEPS=True)
+            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=True)
+            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=True)
             with open(filename+ actMode +'RL.pkl', 'wb') as f:  
                 pickle.dump([env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL], f)
             with open(filename+'BM1.pkl', 'wb') as f: 
@@ -784,7 +796,7 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
     return EE_RL, RL_CLPolicy_UE,RL_CAPolicy_BS
 
 if __name__ == '__main__':
-    
+    '''
     actMode = '1act'
     lossCountVec = []
     for number in range(10):
@@ -795,23 +807,54 @@ if __name__ == '__main__':
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # new ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         # Training Phase
-        lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=False, loadActor = False,number=number) 
+        #lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
         #==============================================================================================
         # new ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         # Evaluation Phase
         #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
         #lossCountVec.append(lossCount)
-        #filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        #plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-    
+        filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+        plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+    '''
     #==============================================================================================
     '''
-    # plot Evaluation Final 
+    # plot Evaluation Final for 4.4.5.2
+    actMode = '1act'
+    number = 6
+    SEED = number # random seed
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    # new ENV
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+    # Evaluation Phase
+    lossCount = evaluateModel(env,actMode=actMode, nItr=2,number=number)
+    # plot EE
+    filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+    plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
+    '''
+    #==============================================================================================
+    '''
+    # Modify request
+    env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True,SEED=0)
+    print('requests:',env.Req)
+    print('preference:',env.userPreference)
+    for u in range(env.U):
+        env.Req[u]=list(env.userPreference[u]).index(0)
+    print('requests:',env.Req)
+    filename = 'data/'+env.TopologyCode+'/Topology/['+str(env.SEED)+']Topology_'+ env.TopologyName #+ str(today)
+    plot_UE_BS_distribution_Cache(env,None,None,0,filename,isEPS=False)
+    '''
+    #==============================================================================================    
+    
+    # plot Evaluation Final for 10.5.20.2
     actMode = '1act'
     number = 6
     SEED = number # random seed
@@ -823,7 +866,7 @@ if __name__ == '__main__':
     #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
     # plot EE
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-    plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
+    plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
     # plot PV
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
     with open(filename+ actMode +'RL.pkl', 'rb') as f:  
@@ -843,7 +886,6 @@ if __name__ == '__main__':
     plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=True,isEPS=False)
     plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=True,isEPS=False)
     plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=True,isEPS=False)
-    '''
     #==============================================================================================
     # multi-instance training
     '''
