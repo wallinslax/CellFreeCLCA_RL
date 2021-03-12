@@ -39,12 +39,14 @@ warmup = -1
 epsilon = 0.2
 #####################################
 # plot size
+'''
 font = {'family' : 'Verdana',
-        'weight' : 'bold',
+        'weight' : 'normal',
         'size'   : 14}
 
 matplotlib.rc('font', **font)
 markerSize = 20*4**1
+'''
 #####################################
 def plotMetric(poolEE,poolBestEE):
     xScale = 100
@@ -54,7 +56,7 @@ def plotMetric(poolEE,poolBestEE):
     plt.plot(x,poolBestEE[-xScale:],'r^-',label='EE BF')
     plt.title("Metric Visualization") # title
     plt.ylabel("Bits/J") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.xlim([0, xScale])
     #plt.ylim([0, 40])
     plt.grid()
@@ -87,7 +89,7 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     #---------------------------------------------------------------------------------------------
     # plot Brute Force
     if poolEE_BF!=None:
-        plt.plot(range(nXpt),poolEE_BF,'k-',label='Brute Force')
+        plt.plot(range(nXpt),poolEE_BF,'k:',label='Brute Force')
         finalValue = "{:.2f}".format(poolEE_BF[-1])
         #plt.annotate(finalValue, (nXpt,poolEE_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
     #---------------------------------------------------------------------------------------------
@@ -114,7 +116,7 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Energy Efficiency (EE)\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Bits/J") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
@@ -162,7 +164,7 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Throughput\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Bits/s") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
@@ -211,7 +213,7 @@ def plotPsys(env,filename,poolPsys_RL1act=None,poolPsys_RL2act=None,poolPsys_BM1
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': System Power Consumption\n Topology:'+env.TopologyCode) # title
     plt.ylabel("W") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
@@ -260,7 +262,7 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Miss Count of AP\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Counts") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
@@ -309,7 +311,7 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Miss Count of CPU\n Topology:'+env.TopologyCode) # title
     plt.ylabel("Counts") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.xlim(0,nXpt)
@@ -345,7 +347,7 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
     #---------------------------------------------------------------------------------------------
     #plt.title(phaseName+': Hit Rate (HR) \n Topology:'+env.TopologyCode) # title
     plt.ylabel("Ratio") # y label
-    plt.xlabel("Iteration") # x label
+    plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
     plt.axis([0, nXpt, 0, 1.1])
@@ -396,10 +398,9 @@ def plotHistory(env,filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPl
 
     #---------------------------------------------------------------------------------------------
     # Load Brute Force Policy
-    env.B=5
     if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
-        with open(filename+ 'BF.pkl', 'wb') as f:  
-            pickle.dump([env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF], f)
+        with open(filename+ 'BF.pkl', 'rb') as f:
+            env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF = pickle.load(f)
     #---------------------------------------------------------------------------------------------
     file_1act = filename+ '1act' +'RL.pkl'
     file_2act = filename+ '2act' +'RL.pkl'
@@ -428,7 +429,7 @@ def plotHistory(env,filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPl
         
         plt.title(phaseName+': Critic and Actor Loss\n' + env.TopologyName) # title
         plt.ylabel("Q") # y label
-        plt.xlabel("Iteration") # x label
+        plt.xlabel("t") # x label
         plt.grid()
         plt.legend()
         fig = plt.gcf()
@@ -838,9 +839,10 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
     return EE_RL, RL_CLPolicy_UE,RL_CAPolicy_BS
 
 if __name__ == '__main__':
+    '''
     actMode = '1act'
     lossCountVec = []
-    for number in range(0,1):
+    for number in range(6,7):
         #####################  hyper parameters  ####################
         # DDPG Parameter
         SEED = number # random seed
@@ -850,23 +852,23 @@ if __name__ == '__main__':
         # new ENV
         env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
         #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
-        '''
+        
         # Training Phase
         lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(env,filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False)
-        '''
+        
         #==============================================================================================
         # new ENV
         env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
         #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         # Evaluation Phase
-        lossCount = evaluateModel(env,actMode=actMode, nItr=10,number=number)
+        #lossCount = evaluateModel(env,actMode=actMode, nItr=2,number=number)
         #lossCountVec.append(lossCount)
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
         plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
-    #==============================================================================================
     '''
+    #==============================================================================================
     # plot Evaluation Final for 4.4.5.2
     actMode = '1act'
     number = 6
@@ -881,7 +883,6 @@ if __name__ == '__main__':
     # plot EE
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
     plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
-    '''
     #==============================================================================================
     '''
     # Modify request
@@ -907,7 +908,7 @@ if __name__ == '__main__':
     #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
     # plot Performance
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-    plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
+    #plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
     # plot PV
     filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
     with open(filename+ actMode +'RL.pkl', 'rb') as f:  
@@ -916,17 +917,10 @@ if __name__ == '__main__':
         env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
     with open(filename+'BM2.pkl', 'rb') as f:  
         env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
-    print(CL_Policy_UE_RL)
-    EE_RL=env.calEE(CL_Policy_UE_RL,CA_Policy_BS_RL)
-    print('env.I[1]=',env.I[1])
-
-    CL_Policy_UE_RL[1].remove(5)
-    print(CL_Policy_UE_RL)
-    EE_RL=env.calEE(CL_Policy_UE_RL,CA_Policy_BS_RL)
-    print('env.I[1]=',env.I[1])
-    plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=True,isEPS=False)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=True,isEPS=False)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=True,isEPS=False)
+    plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=False,isEPS=True)
+    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=False,isEPS=True)
+    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=False,isEPS=True)
+    
     #==============================================================================================
     # multi-instance training
     '''

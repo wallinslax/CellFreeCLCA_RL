@@ -43,15 +43,19 @@ P_bh = 500 # data retrieval power from backhaul = 500mW (AP--CPU)
 P_bb = 500 # data retrieval power from backbone = 500mW (CPU--Backbone)
 P_o_SBS = 1500 # operational power of SBS = 1500mW
 P_o_MBS = 2500 # operational power of MBS =2500mW
-n_var = 2*(10**-13) # thermal noise power =  -127 (dBm) =1.995262315e-13(mW)
+n_var = 3.981*(10**-9) # 300K/ 1GHz  => -84 dbm = 3.981e-9 (mW)
+# Johnson–Nyquist noise (thermal noise)
 # https://www.everythingrf.com/rf-calculators/noise-power-calculator
-# 25C/ 50 kHz => Noise Power -126.86714407 dBm
-# 25C/ 6 GHz => Noise Power -81.53951698 dBm = 7.02e-12(mW)
+# https://www.digikey.tw/zh/resources/conversion-calculators/conversion-calculator-dbm-to-watts
+# 25C/ 50 kHz => -126.86714407 dBm = 1.995262315e-13(mW)
+# 25C/ 6 GHz  =>  -81.53951698 dBm = 7.02e-12(mW)
+# 300K/ 1GHz  => -84 dbm = 3.981e-9(mW)
+
 #####################################
 # plot size
 font = {'family' : 'Verdana',
-        'weight' : 'bold',
-        'size'   : 14}
+        'weight' : 'normal',
+        'size'   : 13}
 
 matplotlib.rc('font', **font)
 markerSize = 20*4**1
@@ -84,9 +88,9 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     b = 0
     for x,y in zip(xx_bs, yy_bs):
         #plt.annotate("%s" % 'AP'+str(b), xy=(x,y), xytext=(x, y-0.04),color='k')#label index
-        plt.annotate("%s" % b, xy=(x,y), xytext=(x, y-0.04),color='k')#label index
+        plt.annotate("%s" % b, xy=(x,y), xytext=(x, y-0.06),color='k')#label index
         if caching_policy_BS:
-            plt.annotate("%s" % str(list(caching_policy_BS[b])), xy=(x,y), xytext=(x, y),color='k')#label cache
+            plt.annotate("%s" % str(list(caching_policy_BS[b])), xy=(x,y), xytext=(x-0.03, y+0.03),color='k')#label cache
         b = b+1
     # UE
     '''
@@ -110,15 +114,15 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
         #plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.04),color=color[u])#label index
         #plt.annotate("%s" % 'UE'+str(u)+' ['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.05, yy_u+0.015),color=color[u])
         # plot Request
-        plt.annotate("%s" % '['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u+0.015),color=color[u])
+        plt.annotate("%s" % '['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.03, yy_u+0.03),color=color[u])
         if isDetail:
             EE=env.calEE(clustering_policy_UE,caching_policy_BS)
             # plot P_r
-            plt.annotate("%s" % 'P_r='+str( "{:.2f}".format(env.P_r[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.03),color=color[u])
+            plt.annotate("%s" % 'P_r='+str( "{:.2f}".format(env.P_r[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.03),color=color[u], fontsize=10)
             # plot I
-            plt.annotate("%s" % 'I='+str( "{:.2f}".format(env.I[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.06),color=color[u])
+            plt.annotate("%s" % 'I='+str( "{:.2f}".format(env.I[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.06),color=color[u], fontsize=10)
             # plot SINR
-            plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u])
+            plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u], fontsize=10)
         # plot Clustering
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
@@ -133,7 +137,8 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     #plt.title('Policy Visulization\n'+methodName+' Sampled EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
-    plt.legend()
+    plt.axis([-0.7, 0.5, -0.5, 0.5])
+    plt.legend(loc = 'lower left', fontsize=10)
     #plt.show()
     fig = plt.gcf()
     if filename:
@@ -381,8 +386,8 @@ class BS(gym.Env):
         for u in range(self.U): 
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
             positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ] # unlimited
-            selectedBS = np.intersect1d(maxLBS,positiveBS) # L=2
-            clustering_policy_UE.append(positiveBS)
+            selectedBS = np.intersect1d(maxLBS,positiveBS) # <=L
+            clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
         cacheScore = np.reshape(a_ca, (self.B,self.F) )
@@ -503,16 +508,17 @@ class BS(gym.Env):
 
         '''[8] Activated BS set: S = Union S_u'''
         activatedBS = np.nonzero(self.rho)[0]
-
+        '''[8.5] Activated UE set: C = Union C_b'''
+        activatedUE = [ u for u in range(self.U) if list(clustering_policy_UE[u] ) != [] ] 
         '''[9] Interference I'''
         self.I = np.zeros(self.U)
         #***DEBUG***
         #print('self.rho=',self.rho)
         #***DEBUG***
         for u in range(self.U):
-            other_u = list(range(self.U))
+            other_u = activatedUE
             other_u.remove(u)
-            for uu in other_u:
+            for uu in other_u: # set C != all UE
                 sum_b = 0
                 for b in activatedBS:# set S != all BS
                     #chk = self.g[b][u] * self.g[b][uu].conjugate()
@@ -738,7 +744,7 @@ if __name__ == "__main__":
         env = BS(nBS=4,nUE=4,nMaxLink=3,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
         #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
     #------------------------------------------------------------------------------------------------
-    
+    '''
     # Benchmark 1 snrCL_popCA
     EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
     
@@ -763,7 +769,7 @@ if __name__ == "__main__":
     TP_BM2 = sum(env.Throughput)
     Psys_BM2 = env.P_sys/1000 # mW->W
     HR_BM2 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
-    
+    '''
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
     # EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
