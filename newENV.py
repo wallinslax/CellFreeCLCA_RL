@@ -43,14 +43,29 @@ P_bh = 500 # data retrieval power from backhaul = 500mW (AP--CPU)
 P_bb = 500 # data retrieval power from backbone = 500mW (CPU--Backbone)
 P_o_SBS = 1500 # operational power of SBS = 1500mW
 P_o_MBS = 2500 # operational power of MBS =2500mW
-n_var = 3.981*(10**-9) # 300K/ 1GHz  => -84 dbm = 3.981e-9 (mW)
+n_var = 7.457*(10**-10) # 300K/ 20MHz: 7.457e-13 (W) (mW)
 # Johnson–Nyquist noise (thermal noise)
 # https://www.everythingrf.com/rf-calculators/noise-power-calculator
-# https://www.digikey.tw/zh/resources/conversion-calculators/conversion-calculator-dbm-to-watts
+# https://www.rapidtables.com/convert/power/dBm_to_Watt.html
+# https://en.wikipedia.org/wiki/Johnson%E2%80%93Nyquist_noise
 # 25C/ 50 kHz => -126.86714407 dBm = 1.995262315e-13(mW)
-# 25C/ 6 GHz  =>  -81.53951698 dBm = 7.02e-12(mW)
+# 300K/ 20MHz  => -101 dbm = 7.94e-11 (mW)
 # 300K/ 1GHz  => -84 dbm = 3.981e-9(mW)
+'''
+bandwidth =20MHz
+kB = 1.381e-23 J/K
+T0 = 300K
+noise figure = 9dB
 
+[1]wiki的公式是: noise power = bandwidth × kB × T0
+noise power = 20MHz × 1.381e-23 × 300K =8.286e-14(W)
+
+[2] 參照wiki table
+300K/ 20MHz  =>noise power = -101 dbm = 7.94e-14 (W)
+
+[3] Small Cells多了noise figure:  noise power = bandwidth × kB × T0 × noise figure
+noise power = 20MHz × 1.381e-23 × 300K × 9dB =7.457e-13 (W)
+'''
 #####################################
 # plot size
 font = {'family' : 'Verdana',
@@ -514,9 +529,13 @@ class BS(gym.Env):
         self.I = np.zeros(self.U)
         #***DEBUG***
         #print('self.rho=',self.rho)
+        #if len(activatedUE)!=self.U:
+        #    print('watch')
         #***DEBUG***
-        for u in range(self.U):
-            other_u = activatedUE
+        #for u in range(self.U):
+        #    other_u = list(range(self.U))
+        for u in activatedUE:
+            other_u = activatedUE.copy()
             other_u.remove(u)
             for uu in other_u: # set C != all UE
                 sum_b = 0
@@ -772,7 +791,7 @@ if __name__ == "__main__":
     '''
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    # EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
+    EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
     #------------------------------------------------------------------------------------------------
     # Load the whole environment with Optimal Clustering and Optimal Caching   
     filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']BF_'+env.TopologyName
