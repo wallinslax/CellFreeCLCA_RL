@@ -88,14 +88,14 @@ def UE_SBS_location_distribution(lambda0): #PPP
 def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,filename,isDetail=False,isEPS=False):
     #drive, path_and_file = os.path.splitdrive(filename)
     #print(filename.split('_')[-1])
-    
     methodName = filename.split('_')[-1]
     path, filenameO = os.path.split(filename)
     if 'Training' in filename:
         phaseName = 'Training Phase'
     elif 'Evaluation' in filename:
         phaseName = 'Evaluation Phase'
-    plt.cla()
+    #plt.cla()
+    plt.clf()
     # AP
     xx_bs = env.bs_coordinate[:,0]
     yy_bs = env.bs_coordinate[:,1]
@@ -589,26 +589,18 @@ class BS(gym.Env):
         #self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
         return self.EE
 
-    def getSNR_CL_Policy(self):
+    def getSNR_CL_Policy(self,nLink):
         g_abs = abs(self.g) # g  = [B*U]
         g_absT = g_abs.T # g_absT= [U*B]
         SNR_CL_Policy_UE = []  
         # kth UE determine the AP set (S_k)     
         for u in range(self.U):
-            bestBS = g_absT[u].argsort()[::-1][:self.L]
+            bestBS = g_absT[u].argsort()[::-1][:nLink]
             SNR_CL_Policy_UE.append(bestBS)
         return SNR_CL_Policy_UE
 
-    def getPOP_CA_Policy(self):
-        '''[] caching based on userPreference top_N_idx '''
-        sumUserPreferenceInCluster = np.sum(self.userPreference[ : ],axis=0)
-        top_N_idx = sumUserPreferenceInCluster.argsort()[0:self.N]
-        POP_CA_Policy_BS = [top_N_idx] * self.B
-        return POP_CA_Policy_BS
-
-    def snrCL_popCA(self,cacheMode):
-        clustering_policy_UE = self.getSNR_CL_Policy()
-        # transform clustering_policy_UE to clustering_policy_BS
+    def getPOP_CA_Policy_Local(self,clustering_policy_UE,cacheMode):
+         # transform clustering_policy_UE to clustering_policy_BS
         clustering_policy_BS = []
         for b in range(self.B):
             competeUE = []
@@ -616,7 +608,6 @@ class BS(gym.Env):
                 if b in clustering_policy_UE[u]:
                     competeUE.append(u) #the UE set in b-th cluster   
             clustering_policy_BS.append(competeUE)
-        
         '''[] caching based on Req top_N_idx '''
         reqCacheTopN = []
         for b in range (self.B):
@@ -644,35 +635,54 @@ class BS(gym.Env):
             estCacheTopN.append(top_N_idx)
         
         if cacheMode == 'req':
-            caching_policy_BS = reqCacheTopN
+            POP_CA_Policy_BS_Local = reqCacheTopN
         elif cacheMode == 'pref':
-            caching_policy_BS = optCacheTopN
+            POP_CA_Policy_BS_Local = optCacheTopN
         elif cacheMode == 'stat':
-            caching_policy_BS = estCacheTopN
+            POP_CA_Policy_BS_Local = estCacheTopN
 
-        return clustering_policy_UE,caching_policy_BS
+        return POP_CA_Policy_BS_Local
 
-    def getBestEE_snrCL_popCA(self,cacheMode='pref'):
-        originL = self.L
-        # Find Best L
+    def getPOP_CA_Policy(self):
+        '''[] caching based on userPreference top_N_idx '''
+        sumUserPreferenceInCluster = np.sum(self.userPreference[ : ],axis=0)
+        top_N_idx = sumUserPreferenceInCluster.argsort()[0:self.N]
+        POP_CA_Policy_BS = [top_N_idx] * self.B
+        return POP_CA_Policy_BS
+    
+    def getPolicy_BM1(self,cacheMode='pref'):
+        # Find Best nLink
         snrCL_popCA_EE_Array = [-1]
-        snrCL_Throughput_Array = [-1]
-        for self.L in range(1,self.B+1):
-            snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
+        TP_Array = [-1]
+        for nLink in range(1,self.L+1):
+            snrCL_policy_UE = self.getSNR_CL_Policy(nLink)
+            popCA_policy_BS = self.getPOP_CA_Policy_Local(snrCL_policy_UE,cacheMode='pref')
             snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
-            snrCL_Throughput = sum(self.Throughput)
-            #print('self.L=',self.L,',snrCL_popCA_EE=',snrCL_popCA_EE)
-            snrCL_popCA_EE_Array.append(snrCL_popCA_EE) 
-            snrCL_Throughput_Array.append(snrCL_Throughput)  
-        # Derive Best L s.t. max EE by snrCL_popCA_EE_Array/snrCL_Throughput_Array
-        bestL = np.argmax(snrCL_popCA_EE_Array)
-        self.L = bestL
-        # Derive Benchmark policy given L
-        snrCL_policy_UE, popCA_policy_BS = self.snrCL_popCA(cacheMode=cacheMode)
-        # Derive Benchmark result
-        EE_snrCL_popCA = self.calEE(snrCL_policy_UE,popCA_policy_BS)
-        self.L = originL
-        return EE_snrCL_popCA, snrCL_policy_UE, popCA_policy_BS, bestL
+            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)
+            TP_Array.append(sum(self.Throughput))
+        # derive best L
+        bestL_BM1 = np.argmax(snrCL_popCA_EE_Array)
+        SNR_CL_Policy_UE_BM1 = self.getSNR_CL_Policy(bestL_BM1)
+        POP_CA_Policy_BS_BM1 = self.getPOP_CA_Policy_Local(SNR_CL_Policy_UE_BM1,cacheMode='pref')
+        EE_BM1 = self.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
+        return EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1
+
+    def getPolicy_BM2(self):
+        # Find Best nLink
+        snrCL_popCA_EE_Array = [-1]
+        TP_Array = [-1]
+        for nLink in range(1,self.L+1):
+            snrCL_policy_UE = self.getSNR_CL_Policy(nLink)
+            popCA_policy_BS = self.getPOP_CA_Policy()
+            snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
+            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)
+            TP_Array.append(sum(self.Throughput))
+        # derive best L
+        bestL_BM2 = np.argmax(snrCL_popCA_EE_Array)
+        SNR_CL_Policy_UE_BM2 = self.getSNR_CL_Policy(bestL_BM2)
+        POP_CA_Policy_BS_BM2 = self.getPOP_CA_Policy()
+        EE_BM2 = self.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+        return EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2
 
     def getOptEE_BF(self,isSave=True):
         print("this is brute force for EE")
@@ -760,35 +770,24 @@ if __name__ == "__main__":
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=3,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
-        #env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
+        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
+        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
     #------------------------------------------------------------------------------------------------
-    '''
     # Benchmark 1 snrCL_popCA
-    EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
-    
-    print(env.Req)
-    print(env.userPreference)
-    POP_CA_Policy_BS_BM1[0]=[0,4]
-    EE_test=env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-    print('EE_test=',EE_test)
-    
+    EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1=env.getPolicy_BM1(cacheMode='pref')
+    EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
     TP_BM1 = sum(env.Throughput)
     Psys_BM1 = env.P_sys/1000 # mW->W
     HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
     filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
-    with open(filename+'BM1.pkl', 'wb') as f: 
-        pickle.dump([env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1], f)
     plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1,EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
     #------------------------------------------------------------------------------------------------
     # Benchmark 2
-    SNR_CL_Policy_UE = env.getSNR_CL_Policy()
-    POP_CA_Policy_BS = env.getPOP_CA_Policy()
-    EE_BM2 = env.calEE(SNR_CL_Policy_UE,POP_CA_Policy_BS)
+    EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2=env.getPolicy_BM2()
+    EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
     TP_BM2 = sum(env.Throughput)
     Psys_BM2 = env.P_sys/1000 # mW->W
-    HR_BM2 = env.calHR(SNR_CL_Policy_UE,POP_CA_Policy_BS)
-    '''
+    HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
     EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)

@@ -85,6 +85,7 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
         phaseName = 'Preview Phase'
     
     plt.cla()
+    plt.clf()
     nXpt=len(poolEE_BM1)
     #---------------------------------------------------------------------------------------------
     # plot Brute Force
@@ -414,6 +415,7 @@ def plotHistory(env,filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPl
     if isPlotLoss:
         # plot RL: poolLossCritic/poolLossActor
         plt.cla()
+        plt.clf()
         if os.path.isfile(file_1act):
             plt.plot(range(len(poolLossCritic1act)),poolLossCritic1act,'b-',label='Loss of critic 1act')
             plt.plot(range(len(poolLossActor1act)),poolLossActor1act,'c-',label='Loss of actor 1act')
@@ -540,9 +542,8 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
 
             #===========================================================================
             # Experience Injection
-            if iteraion < 1000:
-                #
-                EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1,bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
+            #if iteraion < 1000:
+            #    EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1,bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
 
             # RL Add Memory
             if actMode == '2act':
@@ -583,10 +584,12 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
 
             if (iteraion % 1000) == 0: # Mectric Snapshot
                 # BM1
-                EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1,bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
+                EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL=env.getPolicy_BM1(cacheMode='pref')
+                EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
                 TP_BM1 = sum(env.Throughput)
                 Psys_BM1 = env.P_sys/1000 # mW->W
                 HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
+
                 poolEE_BM1.extend(np.ones(1000)*EE_BM1)
                 poolTP_BM1.extend(np.ones(1000)*TP_BM1)
                 poolPsys_BM1.extend(np.ones(1000)*Psys_BM1)
@@ -594,13 +597,12 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
                 poolMCAP_BM1.extend(np.ones(1000)*env.missCounterAP)
                 poolMCCPU_BM1.extend(np.ones(1000)*env.missCounterCPU)
                 #BM2
-                #print('\n env.L=',env.L)
-                SNR_CL_Policy_UE_BM2 = env.getSNR_CL_Policy()
-                POP_CA_Policy_BS_BM2 = env.getPOP_CA_Policy()
+                EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL=env.getPolicy_BM2()
                 EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
                 TP_BM2 = sum(env.Throughput)
                 Psys_BM2 = env.P_sys/1000 # mW->W
                 HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+
                 poolEE_BM2.extend(np.ones(1000)*EE_BM2)
                 poolTP_BM2.extend(np.ones(1000)*TP_BM2)
                 poolPsys_BM2.extend(np.ones(1000)*Psys_BM2)
@@ -627,8 +629,8 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,number=0):
                     plotHR(env,filename,poolHR_RL1act=poolHR_RL,poolHR_BM1=poolHR_BM1,poolHR_BM2=poolHR_BM2)
 
                 #plot loss
-                plotlist(poolLossCritic,filename+'LossCritic')
-                plotlist(poolLossActor,filename+'LossActor')
+                #plotlist(poolLossCritic,filename+'LossCritic')
+                #plotlist(poolLossActor,filename+'LossActor')
                 '''
                 if poolEE_RL[-1]>EE_BM1:
                     print('poolEE_RL win!',poolEE_RL[-1], 'EE_BM1 loss QQ', EE_BM1)
@@ -731,11 +733,12 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         poolMCAP_RL.append(env.missCounterAP)
         poolMCCPU_RL.append(env.missCounterCPU)
         # BM1
-        EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL = env.getBestEE_snrCL_popCA(cacheMode='pref')
-        #EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL = env.getBestEE_snrCL_popCA(cacheMode='req')
+        EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL=env.getPolicy_BM1(cacheMode='pref')
+        EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
         TP_BM1 = sum(env.Throughput)
         Psys_BM1 = env.P_sys/1000 # mW->W
         HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
+
         poolEE_BM1.append(EE_BM1)
         poolTP_BM1.append(TP_BM1)
         poolPsys_BM1.append(Psys_BM1)
@@ -743,18 +746,19 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         poolMCAP_BM1.append(env.missCounterAP)
         poolMCCPU_BM1.append(env.missCounterCPU)
         # BM2
-        SNR_CL_Policy_UE_BM2 = env.getSNR_CL_Policy()
-        POP_CA_Policy_BS_BM2 = env.getPOP_CA_Policy()
+        EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL=env.getPolicy_BM2()
         EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
         TP_BM2 = sum(env.Throughput)
         Psys_BM2 = env.P_sys/1000 # mW->W
         HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+
         poolEE_BM2.append(EE_BM2)
         poolTP_BM2.append(TP_BM2)
         poolPsys_BM2.append(Psys_BM2)
         poolHR_BM2.append(HR_BM2)
         poolMCAP_BM2.append(env.missCounterAP)
         poolMCCPU_BM2.append(env.missCounterCPU)
+        '''
         # BF
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
             EE_BF, CL_Policy_UE_BF, CA_Policy_BS_BF = env.getOptEE_BF(isSave=True)
@@ -767,13 +771,17 @@ def evaluateModel(env,actMode, nItr=100, number=0):
             poolHR_BF.append(HR_BF)
             poolMCAP_BF.append(env.missCounterAP)
             poolMCCPU_BF.append(env.missCounterCPU)
+        '''
         # Sample CL/CA Policy Visualization
-        if ep == nItr/2:
+        if ep == 0:
+        #if ep == nItr/2:
             filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
+            '''
             if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
                 plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF,filename+'BF',isEPS=True)
                 with open(filename+'BF.pkl', 'wb') as f:  
                     pickle.dump([env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF], f)
+            '''
             plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'RL',isEPS=True)
             plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=True)
             plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=True)
@@ -836,38 +844,53 @@ if __name__ == '__main__':
     
     actMode = '1act'
     lossCountVec = []
-    for number in range(10):
+    for number in [2,6,8]:
         #####################  hyper parameters  ####################
         # Random Seed
-        SEED = number 
-        np.random.seed(SEED)
-        torch.manual_seed(SEED)
-        torch.cuda.manual_seed_all(SEED)
-        # Training Phase
+        randSEED = number 
+        np.random.seed(randSEED)
+        torch.manual_seed(randSEED)
+        torch.cuda.manual_seed_all(randSEED)
+        '''
+        # Training Phase--------
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(env,filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
+        '''
         #==============================================================================================
-        # Evaluation Phase
+        
+        # Evaluation Phase------
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
+        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
         lossCount = evaluateModel(env,actMode=actMode, nItr=2,number=number)
         lossCountVec.append(lossCount)
+        # plot performance
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True,loadBF=True)
-    
+        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
+        # plot PV
+        filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
+        with open(filename+ actMode +'RL.pkl', 'rb') as f:  
+            env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL = pickle.load(f)
+        with open(filename+'BM1.pkl', 'rb') as f: 
+            env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
+        with open(filename+'BM2.pkl', 'rb') as f:  
+            env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
+        plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=False,isEPS=False)
+        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
+        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=False,isEPS=False)
+        
     #==============================================================================================
     # plot Evaluation Final for 4.4.5.2
     actMode = '1act'
     number = 6
-    SEED = number # random seed
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
+    randSEED = number # random seed
+    np.random.seed(randSEED)
+    torch.manual_seed(randSEED)
+    torch.cuda.manual_seed_all(randSEED)
     # new ENV
     env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
     # Evaluation Phase
