@@ -402,6 +402,8 @@ class BS(gym.Env):
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
             positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ] # unlimited
             selectedBS = np.intersect1d(maxLBS,positiveBS) # <=L
+            if selectedBS.size == 0:# gurantee all users are served
+                selectedBS = connectionScore[u].argsort()[::-1][:1]
             clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
@@ -688,7 +690,7 @@ class BS(gym.Env):
         print("this is brute force for EE")
         # generate all posible clustering_policy_UE
         choiceBS = []
-        for i in range(self.B+1):
+        for i in range(1,self.B+1):
             subChoiceBS = list(combinations (range(self.B), i))
             choiceBS += subChoiceBS
 
@@ -736,7 +738,7 @@ class BS(gym.Env):
                     print('new Record EE:',bestEE)
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
-        filenameBF = 'data/'+self.TopologyCode+'/BF/['+str(self.SEED)+']BF_'+self.TopologyName
+        filenameBF = 'data/'+self.TopologyCode+'/BF/['+str(self.SEED)+']'+self.TopologyName+'_BF'
         if isSave:
             # Save the whole environment with Optimal Clustering and Optimal Caching
             with open(filenameBF+'.pkl', 'wb') as f:  
@@ -745,7 +747,7 @@ class BS(gym.Env):
             with open(filenameBF+'.pkl','rb') as f: 
                 self, bestEE, opt_clustering_policy_UE, opt_caching_policy_BS = pickle.load(f)
         
-
+        bestEE = self.calEE(opt_clustering_policy_UE,opt_caching_policy_BS)
         return bestEE, opt_clustering_policy_UE, opt_caching_policy_BS
 
     def smallPeice(self,universe_clustering_policy_UE,caching_policy_BS):
@@ -770,9 +772,10 @@ if __name__ == "__main__":
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
+        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
     #------------------------------------------------------------------------------------------------
+    '''
     # Benchmark 1 snrCL_popCA
     EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1=env.getPolicy_BM1(cacheMode='pref')
     EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
@@ -788,12 +791,13 @@ if __name__ == "__main__":
     TP_BM2 = sum(env.Throughput)
     Psys_BM2 = env.P_sys/1000 # mW->W
     HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+    '''
     #------------------------------------------------------------------------------------------------
     # Derive Policy: BF
-    EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
+    #EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
     #------------------------------------------------------------------------------------------------
     # Load the whole environment with Optimal Clustering and Optimal Caching   
-    filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']BF_'+env.TopologyName
+    filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']'+env.TopologyName+'BFN'
     with open(filenameBF+'.pkl','rb') as f: 
         envX, EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = pickle.load(f)
     EE_BF = envX.calEE(BF_CL_Policy_UE,BF_CA_Policy_BS)
@@ -802,4 +806,4 @@ if __name__ == "__main__":
     # Plot
     #filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(SEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
     filename = 'data/'+env.TopologyCode+'/BF/'+'['+ str(SEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
-    plot_UE_BS_distribution_Cache(envX, BF_CL_Policy_UE, BF_CA_Policy_BS, EE_BF,filename+'BF',isDetail=False,isEPS=False)
+    plot_UE_BS_distribution_Cache(envX, BF_CL_Policy_UE, BF_CA_Policy_BS, EE_BF,filename+'BF',isDetail=True,isEPS=False)

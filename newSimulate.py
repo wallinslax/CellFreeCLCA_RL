@@ -33,7 +33,7 @@ LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
 
-MAX_EPISODES = 10**2*5
+MAX_EPISODES = 10**2*10
 MAX_EP_STEPS = 10**2
 warmup = -1
 epsilon = 0.2
@@ -120,7 +120,7 @@ def plotEE(env,filename,poolEE_RL1act=None,poolEE_RL2act=None,poolEE_BM1=None,po
     plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
-    plt.xlim(0,nXpt)
+    plt.xlim(0,nXpt-1)
     plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_EE.png', format='png',dpi=120)
@@ -168,7 +168,7 @@ def plotTP(env,filename,poolTP_RL1act=None,poolTP_RL2act=None,poolTP_BM1=None,po
     plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
-    plt.xlim(0,nXpt)
+    plt.xlim(0,nXpt-1)
     plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_Throughput.png', format='png',dpi=120)
@@ -266,7 +266,7 @@ def plotMCAP(env,filename,poolMCAP_RL1act=None,poolMCAP_RL2act=None,poolMCAP_BM1
     plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
-    plt.xlim(0,nXpt)
+    plt.xlim(0,nXpt-1)
     plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_MCAP.png', format='png',dpi=120)
@@ -315,7 +315,7 @@ def plotMCCPU(env,filename,poolMCCPU_RL1act=None,poolMCCPU_RL2act=None,poolMCCPU
     plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
-    plt.xlim(0,nXpt)
+    plt.xlim(0,nXpt-1)
     plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_MCCPU.png', format='png',dpi=120)
@@ -351,7 +351,7 @@ def plotHR(env,filename,poolHR_RL1act=None,poolHR_RL2act=None,poolHR_BM1=None,po
     plt.xlabel("t") # x label
     plt.grid()
     plt.legend()
-    plt.axis([0, nXpt, 0, 1.1])
+    plt.axis([10, nXpt-1, 0, 1.1])
     plt.tight_layout()
     fig = plt.gcf()
     fig.savefig(filename + '_HR.png', format='png',dpi=120)
@@ -411,6 +411,7 @@ def plotHistory(env,filename,isPlotLoss=False,isPlotEE=False,isPlotTP=False,isPl
         env, poolEE_BM1,poolTP_BM1,poolPsys_BM1,poolHR_BM1,poolMCAP_BM1,poolMCCPU_BM1 = pickle.load(f)
     with open(filename+'BM2.pkl','rb') as f:
         env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolMCAP_BM2,poolMCCPU_BM2 = pickle.load(f)
+
     #---------------------------------------------------------------------------------------------
     if isPlotLoss:
         # plot RL: poolLossCritic/poolLossActor
@@ -684,39 +685,39 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         ddpg_s.loadModel(modelPath = modelPath, modelName= '['+ str(number) +']'+ actMode)
     # BF
     if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
-        poolEE_BF=[]
-        poolTP_BF = []
-        poolPsys_BF = []
-        poolHR_BF=[]
-        poolMCAP_BF = [] # MCAP = miss file count at APs
-        poolMCCPU_BF = [] # MCCPU = miss file count at CPU
+        poolEE_BF = [0]*nItr
+        poolTP_BF = [0]*nItr
+        poolPsys_BF = [0]*nItr
+        poolHR_BF=[0]*nItr
+        poolMCAP_BF = [0]*nItr # MCAP = miss file count at APs
+        poolMCCPU_BF = [0]*nItr # MCCPU = miss file count at CPU
     # RL
-    poolEE_RL=[]
-    poolTP_RL = []
-    poolPsys_RL = []
-    poolHR_RL=[]
-    poolMCAP_RL = [] # MCAP = miss file count at APs
-    poolMCCPU_RL = [] # MCCPU = miss file count at CPU
-    poolLossActor = []
-    poolLossCritic = []
-    poolVarLossCritic = []
-    poolVarEE = []
+    poolEE_RL=[0]*nItr
+    poolTP_RL = [0]*nItr
+    poolPsys_RL = [0]*nItr
+    poolHR_RL=[0]*nItr
+    poolMCAP_RL = [0]*nItr # MCAP = miss file count at APs
+    poolMCCPU_RL = [0]*nItr # MCCPU = miss file count at CPU
+    poolLossActor = [0]*nItr
+    poolLossCritic = [0]*nItr
+    poolVarLossCritic = [0]*nItr
+    poolVarEE = [0]*nItr
 
-    # BM1 snrCL_popCA
-    poolEE_BM1=[]
-    poolTP_BM1=[]
-    poolPsys_BM1 = []
-    poolHR_BM1 = []
-    poolMCAP_BM1 = []
-    poolMCCPU_BM1 = []
+    # BM1
+    poolEE_BM1 = [0]*nItr
+    poolTP_BM1 = [0]*nItr
+    poolPsys_BM1 = [0]*nItr
+    poolHR_BM1 = [0]*nItr
+    poolMCAP_BM1 = [0]*nItr
+    poolMCCPU_BM1 = [0]*nItr
 
     # BM2
-    poolEE_BM2=[]
-    poolTP_BM2=[]
-    poolPsys_BM2 = []
-    poolHR_BM2 = []
-    poolMCAP_BM2 = []
-    poolMCCPU_BM2 = []
+    poolEE_BM2 = [0]*nItr
+    poolTP_BM2 = [0]*nItr
+    poolPsys_BM2 = [0]*nItr
+    poolHR_BM2 = [0]*nItr
+    poolMCAP_BM2 = [0]*nItr
+    poolMCCPU_BM2 = [0]*nItr
     for ep in tqdm(range(nItr),bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}'):
         # DDPG
         if actMode == '2act':
@@ -726,12 +727,13 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         TP_RL = sum(env.Throughput)
         Psys_RL = env.P_sys/1000
         HR_RL = env.calHR(CL_Policy_UE_RL,CA_Policy_BS_RL)
-        poolEE_RL.append(EE_RL)
-        poolTP_RL.append(TP_RL)
-        poolPsys_RL.append(Psys_RL)
-        poolHR_RL.append(HR_RL)
-        poolMCAP_RL.append(env.missCounterAP)
-        poolMCCPU_RL.append(env.missCounterCPU)
+        poolEE_RL[ep] = EE_RL
+        poolTP_RL[ep] = TP_RL
+        poolPsys_RL[ep] = Psys_RL
+        poolHR_RL[ep] = HR_RL
+        poolMCAP_RL[ep] = env.missCounterAP
+        poolMCCPU_RL[ep] = env.missCounterCPU
+
         # BM1
         EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL=env.getPolicy_BM1(cacheMode='pref')
         EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
@@ -739,12 +741,12 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         Psys_BM1 = env.P_sys/1000 # mW->W
         HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
 
-        poolEE_BM1.append(EE_BM1)
-        poolTP_BM1.append(TP_BM1)
-        poolPsys_BM1.append(Psys_BM1)
-        poolHR_BM1.append(HR_BM1)
-        poolMCAP_BM1.append(env.missCounterAP)
-        poolMCCPU_BM1.append(env.missCounterCPU)
+        poolEE_BM1[ep] = EE_BM1
+        poolTP_BM1[ep] = TP_BM1
+        poolPsys_BM1[ep] = Psys_BM1
+        poolHR_BM1[ep] = HR_BM1
+        poolMCAP_BM1[ep] = env.missCounterAP
+        poolMCCPU_BM1[ep] = env.missCounterCPU
         # BM2
         EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL=env.getPolicy_BM2()
         EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
@@ -752,39 +754,40 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         Psys_BM2 = env.P_sys/1000 # mW->W
         HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
 
-        poolEE_BM2.append(EE_BM2)
-        poolTP_BM2.append(TP_BM2)
-        poolPsys_BM2.append(Psys_BM2)
-        poolHR_BM2.append(HR_BM2)
-        poolMCAP_BM2.append(env.missCounterAP)
-        poolMCCPU_BM2.append(env.missCounterCPU)
-        '''
+        poolEE_BM2[ep] = EE_BM2
+        poolTP_BM2[ep] = TP_BM2
+        poolPsys_BM2[ep] = Psys_BM2
+        poolHR_BM2[ep] = HR_BM2
+        poolMCAP_BM2[ep] = env.missCounterAP
+        poolMCCPU_BM2[ep] = env.missCounterCPU
+        
         # BF
         if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
             EE_BF, CL_Policy_UE_BF, CA_Policy_BS_BF = env.getOptEE_BF(isSave=True)
+            EE_BF = env.calEE(CL_Policy_UE_BF,CA_Policy_BS_BF)
             TP_BF = sum(env.Throughput)
             Psys_BF = env.P_sys/1000 # mW->W
             HR_BF = env.calHR(CL_Policy_UE_BF,CA_Policy_BS_BF)
-            poolEE_BF.append(EE_BF)
-            poolTP_BF.append(TP_BF)
-            poolPsys_BF.append(Psys_BF)
-            poolHR_BF.append(HR_BF)
-            poolMCAP_BF.append(env.missCounterAP)
-            poolMCCPU_BF.append(env.missCounterCPU)
-        '''
+
+            poolEE_BF[ep] = EE_BF
+            poolTP_BF[ep] = TP_BF
+            poolPsys_BF[ep] = Psys_BF
+            poolHR_BF[ep] = HR_BF
+            poolMCAP_BF[ep] = env.missCounterAP
+            poolMCCPU_BF[ep] = env.missCounterCPU
+        
         # Sample CL/CA Policy Visualization
-        if ep == 0:
-        #if ep == nItr/2:
+        if ep == nItr/2:
             filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
-            '''
+            
             if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
                 plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF,filename+'BF',isEPS=True)
                 with open(filename+'BF.pkl', 'wb') as f:  
                     pickle.dump([env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF], f)
-            '''
-            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'RL',isEPS=True)
-            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=True)
-            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=True)
+            
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'RL',isEPS=False)
+            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isEPS=False)
+            plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isEPS=False)
             with open(filename+ actMode +'RL.pkl', 'wb') as f:  
                 pickle.dump([env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL], f)
             with open(filename+'BM1.pkl', 'wb') as f: 
@@ -796,9 +799,11 @@ def evaluateModel(env,actMode, nItr=100, number=0):
         #env.resetReq()
     # Save Line
     filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
+    
     if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
         with open(filename+ 'BF.pkl', 'wb') as f:  
             pickle.dump([env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF], f)
+    
     with open(filename+ actMode +'RL.pkl', 'wb') as f:  
         pickle.dump([env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolMCAP_RL,poolMCCPU_RL,poolLossActor,poolLossCritic], f)
     with open(filename+'BM1.pkl', 'wb') as f:  
@@ -809,7 +814,7 @@ def evaluateModel(env,actMode, nItr=100, number=0):
     # Calculate Loss Count
     lossCount = 0
     for i in range(len(poolEE_RL)):
-        if poolEE_RL[i] < poolEE_BM2[i]:
+        if poolEE_RL[i] < poolEE_BM1[i]:
             lossCount+=1
     return lossCount
 
@@ -843,8 +848,12 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
 if __name__ == '__main__':
     
     actMode = '1act'
-    lossCountVec = []
-    for number in [2,6,8]:
+    tryCount = 100
+    lossCountVec = [99]*tryCount
+    # Good case: 4.4.5.2 [0,2,5,12,19,25,26,36,39,43] / 10.5.20.2 [0,28]
+    #for number in [0,2,5,12,19,25,26,36,39,43]:
+    #for number in [2,19,25]:
+    for number in [26]:
         #####################  hyper parameters  ####################
         # Random Seed
         randSEED = number 
@@ -861,16 +870,20 @@ if __name__ == '__main__':
         plotHistory(env,filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
         '''
         #==============================================================================================
-        
         # Evaluation Phase------
         # new ENV
         env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
         #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=0)
-        lossCount = evaluateModel(env,actMode=actMode, nItr=2,number=number)
-        lossCountVec.append(lossCount)
+        # shift time slot
+        for i in range(15):
+            env.timeVariantChannel()
+        lossCount = evaluateModel(env,actMode=actMode, nItr=20,number=number)
+        lossCountVec[number] = lossCount
+        
         # plot performance
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
+        #plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
+        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=True)
         # plot PV
         filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
         with open(filename+ actMode +'RL.pkl', 'rb') as f:  
@@ -879,10 +892,11 @@ if __name__ == '__main__':
             env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
         with open(filename+'BM2.pkl', 'rb') as f:  
             env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
-        plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=False,isEPS=False)
-        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
-        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=False,isEPS=False)
+        plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'RL',isDetail=True,isEPS=False)
+        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=True,isEPS=False)
+        plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=True,isEPS=False)
         
+    good_index = [i for i, x in enumerate(lossCountVec) if x<99 ]
     #==============================================================================================
     # plot Evaluation Final for 4.4.5.2
     actMode = '1act'
