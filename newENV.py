@@ -152,7 +152,7 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     #plt.title('Policy Visulization\n'+methodName+' Sampled EE:'+str(EE))
     plt.axis('equal')
     #plt.legend(loc='upper right')
-    plt.axis([-0.7, 0.5, -0.5, 0.5])
+    #plt.axis([-0.7, 0.6, -0.6, 0.6])
     plt.legend(loc = 'lower left', fontsize=10)
     #plt.show()
     fig = plt.gcf()
@@ -275,8 +275,11 @@ class BS(gym.Env):
                 self.userPreference[u] = seedPreference
             #print(userPreference)
             '''[4] Generate User request'''
-            self.Req = np.zeros(self.U,dtype=int)
-            self.resetReq()
+            self.Req = [self.F]*self.U
+            #self.resetReq()
+            # force users always require most preferable file to ensure BM1's performance is in competitive case ######
+            for u in range(self.U):
+                self.Req[u] =  list(self.userPreference[u]).index(0)
             # check topology
             plot_UE_BS_distribution_Cache(self,None,None,0,filename,isEPS=False)
             # save Topology
@@ -491,6 +494,22 @@ class BS(gym.Env):
         return self.HR
     
     def calEE(self,clustering_policy_UE,caching_policy_BS):
+        '''[5-11] [5] clustering_policy_BS/[6] rho_b/[7] received power P_r/[8] Activated BS set/[8.5] Activated UE set/[9] Interference I/[10] SINR/[11] Throughput'''
+        self.Throughput = self.calTP(clustering_policy_UE)
+
+        '''[12] System power consumption'''
+        self.P_sys = self.callPsys(clustering_policy_UE,caching_policy_BS)
+
+        '''[13] Energy efficiency'''
+        sumThroughput = sum(self.Throughput)
+        if (self.P_sys>0):
+            self.EE = sumThroughput/(self.P_sys/1000) # Bits/s*W mW->W
+        else:
+            self.EE = 0
+        #self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
+        return self.EE
+    
+    def calTP(self,clustering_policy_UE): # calculate throughput
         # S_k = S_u = clustering_policy_UE
         # C_m = C_b = clustering_policy_BS
         '''[5] clustering_policy_BS'''
@@ -524,7 +543,7 @@ class BS(gym.Env):
             self.P_r[u] = np.power(self.P_r[u],2)
 
         '''[8] Activated BS set: S = Union S_u'''
-        activatedBS = np.nonzero(self.rho)[0]
+        activatedBS = list(set([item for sublist in clustering_policy_UE for item in sublist]))
         '''[8.5] Activated UE set: C = Union C_b'''
         activatedUE = [ u for u in range(self.U) if list(clustering_policy_UE[u] ) != [] ] 
         '''[9] Interference I'''
@@ -556,14 +575,19 @@ class BS(gym.Env):
                 #***DEBUG***
                 self.I[u] = self.I[u] + np.power(abs(sum_b),2)
         
-        '''[10] SINR/ [8]Throughput of UE'''
+        '''[10] SINR/ [11]Throughput of UE'''
         self.SINR = np.zeros(self.U)
         self.Throughput = np.zeros(self.U)
         for u in range(self.U):
             self.SINR[u] = self.P_r[u]/(self.I[u] + n_var)
             self.Throughput[u] = math.log2(1+self.SINR[u]) #Bits/s
-        
-        '''[11] System power consumption'''
+
+        return self.Throughput
+
+    def callPsys(self,clustering_policy_UE,caching_policy_BS):
+        '''[8] Activated BS set: S = Union S_u'''
+        activatedBS = list(set([item for sublist in clustering_policy_UE for item in sublist]))
+        '''[12] System power consumption'''
         missFileAP = [ [] for i in range(self.B)]
         for u in range(self.U):
             for bs in clustering_policy_UE[u]:
@@ -581,25 +605,26 @@ class BS(gym.Env):
         missFileCPU = list(set(missFileCPU))
         self.missCounterCPU = len(missFileCPU)
         self.P_sys = P_t*len(activatedBS) + P_bh * self.missCounterAP + P_bb * self.missCounterCPU  #+ self.B*P_o_SBS + P_o_MBS
-        
-        '''[12] Energy efficiency'''
-        sumThroughput = sum(self.Throughput)
-        if (self.P_sys>0):
-            self.EE = sumThroughput/(self.P_sys/1000) # Bits/s*W mW->W
-        else:
-            self.EE = 0
-        #self.EE_norm = (self.EE-self.EE_mean)/self.EE_std # Z-score normalization
-        return self.EE
+        return self.P_sys
 
-    def getSNR_CL_Policy(self,nLink):
+    def getSNR_CL_Policy(self):
         g_abs = abs(self.g) # g  = [B*U]
         g_absT = g_abs.T # g_absT= [U*B]
-        SNR_CL_Policy_UE = []  
-        # kth UE determine the AP set (S_k)     
-        for u in range(self.U):
-            bestBS = g_absT[u].argsort()[::-1][:nLink]
-            SNR_CL_Policy_UE.append(bestBS)
-        return SNR_CL_Policy_UE
+        poolTP_SNR = [0]*(self.L+1)
+        poolCL_Policy_UE = [0]*(self.L+1)
+        for nLink in range(1,self.L+1):
+            SNR_CL_Policy_UE = []  
+            # kth UE determine the AP set (S_k)     
+            for u in range(self.U):
+                bestBS = g_absT[u].argsort()[::-1][:nLink]
+                SNR_CL_Policy_UE.append(bestBS)
+            # calculate throughput
+            tmpTP = self.calTP(SNR_CL_Policy_UE)
+            poolTP_SNR[nLink] = sum(tmpTP)
+            poolCL_Policy_UE[nLink] = SNR_CL_Policy_UE
+        best_nLink = poolTP_SNR.index(max(poolTP_SNR))
+        snrCL_policy_UE = poolCL_Policy_UE[best_nLink]
+        return snrCL_policy_UE, best_nLink
 
     def getPOP_CA_Policy_Local(self,clustering_policy_UE,cacheMode):
          # transform clustering_policy_UE to clustering_policy_BS
@@ -653,35 +678,13 @@ class BS(gym.Env):
         return POP_CA_Policy_BS
     
     def getPolicy_BM1(self,cacheMode='pref'):
-        # Find Best nLink
-        snrCL_popCA_EE_Array = [-1]
-        TP_Array = [-1]
-        for nLink in range(1,self.L+1):
-            snrCL_policy_UE = self.getSNR_CL_Policy(nLink)
-            popCA_policy_BS = self.getPOP_CA_Policy_Local(snrCL_policy_UE,cacheMode='pref')
-            snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
-            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)
-            TP_Array.append(sum(self.Throughput))
-        # derive best L
-        bestL_BM1 = np.argmax(snrCL_popCA_EE_Array)
-        SNR_CL_Policy_UE_BM1 = self.getSNR_CL_Policy(bestL_BM1)
-        POP_CA_Policy_BS_BM1 = self.getPOP_CA_Policy_Local(SNR_CL_Policy_UE_BM1,cacheMode='pref')
+        SNR_CL_Policy_UE_BM1, bestL_BM1 = self.getSNR_CL_Policy()
+        POP_CA_Policy_BS_BM1 = self.getPOP_CA_Policy_Local(SNR_CL_Policy_UE_BM1,cacheMode=cacheMode)
         EE_BM1 = self.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
         return EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1
 
     def getPolicy_BM2(self):
-        # Find Best nLink
-        snrCL_popCA_EE_Array = [-1]
-        TP_Array = [-1]
-        for nLink in range(1,self.L+1):
-            snrCL_policy_UE = self.getSNR_CL_Policy(nLink)
-            popCA_policy_BS = self.getPOP_CA_Policy()
-            snrCL_popCA_EE = self.calEE(snrCL_policy_UE,popCA_policy_BS)
-            snrCL_popCA_EE_Array.append(snrCL_popCA_EE)
-            TP_Array.append(sum(self.Throughput))
-        # derive best L
-        bestL_BM2 = np.argmax(snrCL_popCA_EE_Array)
-        SNR_CL_Policy_UE_BM2 = self.getSNR_CL_Policy(bestL_BM2)
+        SNR_CL_Policy_UE_BM2, bestL_BM2 = self.getSNR_CL_Policy()
         POP_CA_Policy_BS_BM2 = self.getPOP_CA_Policy()
         EE_BM2 = self.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
         return EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2
@@ -738,7 +741,7 @@ class BS(gym.Env):
                     print('new Record EE:',bestEE)
                     opt_clustering_policy_UE = subOpt_clustering_policy_UE
                     opt_caching_policy_BS = subOpt_caching_policy_BS
-        filenameBF = 'data/'+self.TopologyCode+'/BF/['+str(self.SEED)+']'+self.TopologyName+'_BF'
+        filenameBF = 'data/'+self.TopologyCode+'/BF/['+str(self.SEED)+']'+self.TopologyName+'BF'
         if isSave:
             # Save the whole environment with Optimal Clustering and Optimal Caching
             with open(filenameBF+'.pkl', 'wb') as f:  
@@ -765,39 +768,45 @@ class BS(gym.Env):
         pass
 
 if __name__ == "__main__":
-    for i in range(0,1):
+    # CASE [11]
+    for i in range(10,20):
+        print('Current Random seed:',i)
         # DDPG Parameter
         SEED =  i# random seed
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
-        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
-    #------------------------------------------------------------------------------------------------
-    '''
-    # Benchmark 1 snrCL_popCA
-    EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1=env.getPolicy_BM1(cacheMode='pref')
-    EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-    TP_BM1 = sum(env.Throughput)
-    Psys_BM1 = env.P_sys/1000 # mW->W
-    HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-    filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
-    plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1,EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
-    #------------------------------------------------------------------------------------------------
-    # Benchmark 2
-    EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2=env.getPolicy_BM2()
-    EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
-    TP_BM2 = sum(env.Throughput)
-    Psys_BM2 = env.P_sys/1000 # mW->W
-    HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
-    '''
-    #------------------------------------------------------------------------------------------------
-    # Derive Policy: BF
-    #EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
-    #------------------------------------------------------------------------------------------------
+        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = False,SEED=i)
+        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = False,SEED=i)
+        #------------------------------------------------------------------------------------------------
+        
+        # Benchmark 1 snrCL_popCA
+        EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1=env.getPolicy_BM1(cacheMode='pref')
+        EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
+        TP_BM1 = sum(env.Throughput)
+        Psys_BM1 = env.P_sys/1000 # mW->W
+        HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
+        #filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
+        #plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1,EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
+        print('EE_BM1:',EE_BM1)
+        #------------------------------------------------------------------------------------------------
+        # Benchmark 2
+        EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2=env.getPolicy_BM2()
+        EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+        TP_BM2 = sum(env.Throughput)
+        Psys_BM2 = env.P_sys/1000 # mW->W
+        HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
+        #filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
+        #plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2,EE_BM2,filename+'BM2',isDetail=False,isEPS=False)
+        print('EE_BM2',EE_BM2)
+        #------------------------------------------------------------------------------------------------
+        # Derive Policy: BF
+        #EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
+        #------------------------------------------------------------------------------------------------
+        
     # Load the whole environment with Optimal Clustering and Optimal Caching   
-    filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']'+env.TopologyName+'BFN'
+    filenameBF = 'data/'+env.TopologyCode+'/BF/['+str(SEED)+']'+env.TopologyName+'BF'
     with open(filenameBF+'.pkl','rb') as f: 
         envX, EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = pickle.load(f)
     EE_BF = envX.calEE(BF_CL_Policy_UE,BF_CA_Policy_BS)
