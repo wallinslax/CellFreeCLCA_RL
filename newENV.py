@@ -26,7 +26,7 @@ lambda_u = 10 # density of the UE
 h_var = 1 # channel variance
 k = 1 # pathloss coefficient
 alpha = 2 # pathloss exponent
-beta = 2 # zipf parameter
+beta = 1 # zipf parameter
 
 d_th = 0.2*1000 # distance theshold for clustering policy candidate 200m
 '''
@@ -769,7 +769,7 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # CASE [11]
-    for i in range(10,20):
+    for i in range(0,20):
         print('Current Random seed:',i)
         # DDPG Parameter
         SEED =  i# random seed
@@ -777,8 +777,8 @@ if __name__ == "__main__":
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = False,SEED=i)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = False,SEED=i)
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
+        # env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
         #------------------------------------------------------------------------------------------------
         
         # Benchmark 1 snrCL_popCA
