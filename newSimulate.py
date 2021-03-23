@@ -849,12 +849,14 @@ def getEE_RL(env,actMode,ddpg_s=None,ddpg_cl=None,ddpg_ca=None):
 if __name__ == '__main__':
     
     actMode = '1act'
-    tryCount = 100
+    tryCount = 20
     lossCountVec = [99]*tryCount
     # Good case: 4.4.5.2 [0,2,5,12,19,25,26,36,39,43] / 10.5.20.2 [0,28]
     #for number in [0,2,5,12,19,25,26,36,39,43]:
     #for number in [2,19,25]:
-    for number in range(0,20):
+    envSeed = 11
+    for number in range(0,tryCount):
+        print('randSEED:',number)
         #####################  hyper parameters  ####################
         # Random Seed
         randSEED = number 
@@ -865,7 +867,7 @@ if __name__ == '__main__':
         # Training Phase--------
         # new ENV
         #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=11)
+        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed)
         lossCount = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,number=number) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(number) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(env,filename,isPlotLoss=True,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
@@ -874,7 +876,7 @@ if __name__ == '__main__':
         # Evaluation Phase------
         # new ENV
         #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=11)
+        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed)
         '''
         # shift time slot
         for i in range(15):
@@ -885,64 +887,15 @@ if __name__ == '__main__':
         
         # plot performance
         filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-        #plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
-        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=True)
-        '''
+        plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=False)
+        #plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=False,loadBF=True)
+
     good_index = [i for i, x in enumerate(lossCountVec) if x<99 ]
     #==============================================================================================
     # plot Evaluation Final for 4.4.5.2
-    actMode = '1act'
-    number = 6
-    randSEED = number # random seed
-    np.random.seed(randSEED)
-    torch.manual_seed(randSEED)
-    torch.cuda.manual_seed_all(randSEED)
-    # new ENV
-    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-    # Evaluation Phase
-    lossCount = evaluateModel(env,actMode=actMode, nItr=2,number=number)
-    # plot Performance
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-    plotHistory(env,filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
-    # plot PV
-    filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
-    with open(filename+ 'BF.pkl', 'rb') as f:  
-        env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF = pickle.load(f)
-    with open(filename+ actMode +'RL.pkl', 'rb') as f:  
-        env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL = pickle.load(f)
-    with open(filename+'BM1.pkl', 'rb') as f: 
-        env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
-    with open(filename+'BM2.pkl', 'rb') as f:  
-        env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
-    plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BF, CA_Policy_BS_BF, EE_BF,filename+'BF',isEPS=True)
-    plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=False,isEPS=True)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=False,isEPS=True)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=False,isEPS=True)
+
     #==============================================================================================    
     # plot Evaluation Final for 10.5.20.2
-    actMode = '1act'
-    number = 6
-    SEED = number # random seed
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
-    # new ENV
-    env = BS(nBS=10,nUE=5,nMaxLink=2,nFile=20,nMaxCache=2,loadENV = True)
-    #lossCount = evaluateModel(env,actMode=actMode, nItr=100,number=number)
-    # plot Performance
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_Evaluation_'
-    #plotHistory(filename,isPlotLoss=False,isPlotEE=True,isPlotTP=True,isPlotPsys=True,isPlotHR=True,isEPS=True)
-    # plot PV
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhaseFinal/'+'['+ str(number) +']'+ env.TopologyName +'_EVSampledPolicy_'
-    with open(filename+ actMode +'RL.pkl', 'rb') as f:  
-        env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL = pickle.load(f)
-    with open(filename+'BM1.pkl', 'rb') as f: 
-        env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1 = pickle.load(f)
-    with open(filename+'BM2.pkl', 'rb') as f:  
-        env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2 = pickle.load(f)
-    plot_UE_BS_distribution_Cache(env, CL_Policy_UE_RL, CA_Policy_BS_RL, EE_RL,filename+actMode+'_RL',isDetail=False,isEPS=True)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, EE_BM1,filename+'BM1',isDetail=False,isEPS=True)
-    plot_UE_BS_distribution_Cache(env, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, EE_BM2,filename+'BM2',isDetail=False,isEPS=True)
     
     #==============================================================================================
     # multi-instance training
