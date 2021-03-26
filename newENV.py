@@ -8,7 +8,7 @@ from random import randint
 import scipy.stats
 import os,math,random,itertools,csv,pickle,inspect,torch
 from itertools import combinations,permutations,product
-import matplotlib
+import matplotlib,random
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.pyplot import cm
@@ -323,8 +323,8 @@ class BS(gym.Env):
         self.CS = 0
         '''[19] State'''
         self.SINR = np.zeros(self.U)
-        self.clustering_state = np.zeros(self.B*self.U)
-        self.caching_state = np.zeros(self.B*self.F)
+        self.clustering_state = np.zeros([self.B,self.U])
+        self.caching_state = np.zeros([self.B,self.F])
         self.reqStatistic_norm = np.zeros(self.U*self.F)
         # Oberservation Definition
         '''
@@ -443,12 +443,12 @@ class BS(gym.Env):
         clustering_state = np.zeros([self.U,self.B])
         for u in range(self.U):
             clustering_state[u][ list(clustering_policy_UE[u]) ]=1
-
+        #self.clustering_state = clustering_state
         #convert caching policy to binary form
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
-
+        #self.caching_state = caching_state
         # Oberservation Definition
         '''
         self.s_ = np.hstack([   self.SINR,
@@ -606,25 +606,54 @@ class BS(gym.Env):
         self.missCounterCPU = len(missFileCPU)
         self.P_sys = P_t*len(activatedBS) + P_bh * self.missCounterAP + P_bb * self.missCounterCPU  #+ self.B*P_o_SBS + P_o_MBS
         return self.P_sys
-
-    def getSNR_CL_Policy(self):
+    
+    def getFile_CL_Policy(self,nLink):
+        SNR_CL_Policy_UE = []  
         g_abs = abs(self.g) # g  = [B*U]
         g_absT = g_abs.T # g_absT= [U*B]
-        poolTP_SNR = [0]*(self.L+1)
-        poolCL_Policy_UE = [0]*(self.L+1)
-        for nLink in range(1,self.L+1):
-            SNR_CL_Policy_UE = []  
-            # kth UE determine the AP set (S_k)     
-            for u in range(self.U):
-                bestBS = g_absT[u].argsort()[::-1][:nLink]
-                SNR_CL_Policy_UE.append(bestBS)
-            # calculate throughput
-            tmpTP = self.calTP(SNR_CL_Policy_UE)
-            poolTP_SNR[nLink] = sum(tmpTP)
-            poolCL_Policy_UE[nLink] = SNR_CL_Policy_UE
-        best_nLink = poolTP_SNR.index(max(poolTP_SNR))
-        snrCL_policy_UE = poolCL_Policy_UE[best_nLink]
-        return snrCL_policy_UE, best_nLink
+        # kth UE determine the AP set (S_k)     
+        #　caching_state to CA_Policy_BS
+        CA_Policy_BS = [[] for i in range(self.B)]
+        for b in range(self.B):# inherit CA policy in previous time slot
+            CA_Policy_BS[b] = [fileIdx for fileIdx, flag in enumerate(self.caching_state[b]) if flag == 1]
+        
+        CL_Policy_UE = [[] for i in range(self.U)]
+        nonServedUE=[]
+        for u in range(self.U):
+            competeBS = [b for b in range(self.B) if self.Req[u] in CA_Policy_BS[b] ]
+            if len(competeBS) == 0:
+                # no BS cache the desired file
+                # link nearest non avtive BS and put the request file into the cache
+                #CL_Policy_UE[u] = [randint(0,self.B-1)]
+                nonServedUE.append(u)
+            elif len(competeBS) <= nLink:
+                CL_Policy_UE[u] = competeBS
+            else:
+                noCareBS = list(set(range(self.B))-set(competeBS))
+                g_absT[u][noCareBS] = 0
+                CL_Policy_UE[u] = g_absT[u].argsort()[::-1][:nLink]
+                #CL_Policy_UE[u] = random.sample(competeBS, nLink)
+            #print('CL_Policy_UE['+str(u)+']=',CL_Policy_UE[u])
+        if len(nonServedUE) != 0:
+            for u in nonServedUE:
+                activatedBS = list(set([item for sublist in CL_Policy_UE for item in sublist]))
+                g_absT[u][activatedBS] = 0
+                selectBS = g_absT[u].argsort()[::-1][0]
+                #nonActiveBS = list(set(range(self.B))-set(activatedBS))
+                #selectBS = random.sample(nonActiveBS, 1)[0]
+                CA_Policy_BS[selectBS] = [self.Req[u]]
+                CL_Policy_UE[u] = [selectBS]
+        return CL_Policy_UE,CA_Policy_BS
+
+    def getSNR_CL_Policy(self,nLink):
+        g_abs = abs(self.g) # g  = [B*U]
+        g_absT = g_abs.T # g_absT= [U*B]
+        SNR_CL_Policy_UE = []  
+        # kth UE determine the AP set (S_k)     
+        for u in range(self.U):
+            bestBS = g_absT[u].argsort()[::-1][:nLink]
+            SNR_CL_Policy_UE.append(bestBS)
+        return SNR_CL_Policy_UE
 
     def getPOP_CA_Policy_Local(self,clustering_policy_UE,cacheMode):
          # transform clustering_policy_UE to clustering_policy_BS
@@ -677,17 +706,28 @@ class BS(gym.Env):
         POP_CA_Policy_BS = [top_N_idx] * self.B
         return POP_CA_Policy_BS
     
-    def getPolicy_BM1(self,cacheMode='pref'):
-        SNR_CL_Policy_UE_BM1, bestL_BM1 = self.getSNR_CL_Policy()
+    def getPolicy_BM1(self,nLink,cacheMode='pref'):
+        SNR_CL_Policy_UE_BM1 = self.getSNR_CL_Policy(nLink)
         POP_CA_Policy_BS_BM1 = self.getPOP_CA_Policy_Local(SNR_CL_Policy_UE_BM1,cacheMode=cacheMode)
         EE_BM1 = self.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-        return EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1
+        return EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1
 
-    def getPolicy_BM2(self):
-        SNR_CL_Policy_UE_BM2, bestL_BM2 = self.getSNR_CL_Policy()
-        POP_CA_Policy_BS_BM2 = self.getPOP_CA_Policy()
-        EE_BM2 = self.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
-        return EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2
+    def getPolicy_BM2(self,nLink):
+        # A design based solely on ${\cal S}_1, {\cal S}_2, \ldots,{\cal S}_K$ may favor the association of the $k$th user 
+        # with the AP subset ${\cal S}_k$ that provides the best channel conditions, as this may increase $R_k$ and consequently $R_{\rm sum}$. 
+        CL_Policy_UE_BM2 = self.getSNR_CL_Policy(nLink)
+        CA_Policy_BS_BM2 = self.getPOP_CA_Policy()
+        EE_BM2 = self.calEE(CL_Policy_UE_BM2,CA_Policy_BS_BM2)
+        return EE_BM2, CL_Policy_UE_BM2, CA_Policy_BS_BM2
+    
+    def getPolicy_BM3(self,nLink):
+        # a design based solely on ${\cal F}_1, {\cal F}_2, \ldots,{\cal F}_M$ may favor the association of the $k$th user 
+        # with the AP subset ${\cal S}_k$ that best aligns the content caching status and user requests, 
+        # as this may increase hit events and consequently decrease $P_{\rm total}$.
+        CL_Policy_UE_BM3,CA_Policy_BS_BM3 = self.getFile_CL_Policy(nLink)
+        #CA_Policy_BS_BM3 = self.getPOP_CA_Policy_Local(CL_Policy_UE_BM3,cacheMode='req')
+        EE_BM3 = self.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
+        return EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3
 
     def getOptEE_BF(self,isSave=True):
         print("this is brute force for EE")
@@ -769,7 +809,36 @@ class BS(gym.Env):
 
 if __name__ == "__main__":
     # CASE [11]
-    for i in range(0,20):
+    nMaxLink = 3
+    tryCount = 20
+    # BM1 Initialization
+    poolEE_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolTP_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolPsys_BM1=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolHR_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCAP_BM1=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCCPU_BM1=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCL_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCA_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    # BM2 Initialization
+    poolEE_BM2 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolTP_BM2 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolPsys_BM2=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolHR_BM2 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCAP_BM2=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCCPU_BM2=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCL_BM2 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCA_BM2 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    # BM3 Initialization
+    poolEE_BM3 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolTP_BM3 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolPsys_BM3=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolHR_BM3 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCAP_BM3=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolMCCPU_BM3=[[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCL_BM3 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    poolCA_BM3 = [[0]*tryCount  for i in range(nMaxLink+1)]
+    for i in range(0,tryCount):
         print('Current Random seed:',i)
         # DDPG Parameter
         SEED =  i# random seed
@@ -777,29 +846,67 @@ if __name__ == "__main__":
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
-        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
-        # env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
-        #------------------------------------------------------------------------------------------------
+        # env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
+        env = BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = False,SEED=i)
         
-        # Benchmark 1 snrCL_popCA
-        EE_BM1, SNR_CL_Policy_UE_BM1, POP_CA_Policy_BS_BM1, bestL_BM1=env.getPolicy_BM1(cacheMode='pref')
-        EE_BM1 = env.calEE(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-        TP_BM1 = sum(env.Throughput)
-        Psys_BM1 = env.P_sys/1000 # mW->W
-        HR_BM1 = env.calHR(SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1)
-        #filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
-        #plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM1,POP_CA_Policy_BS_BM1,EE_BM1,filename+'BM1',isDetail=False,isEPS=False)
-        print('EE_BM1:',EE_BM1)
-        #------------------------------------------------------------------------------------------------
-        # Benchmark 2
-        EE_BM2, SNR_CL_Policy_UE_BM2, POP_CA_Policy_BS_BM2, bestL_BM2=env.getPolicy_BM2()
-        EE_BM2 = env.calEE(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
-        TP_BM2 = sum(env.Throughput)
-        Psys_BM2 = env.P_sys/1000 # mW->W
-        HR_BM2 = env.calHR(SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2)
-        #filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+ env.TopologyName +'_Evaluation_'
-        #plot_UE_BS_distribution_Cache(env,SNR_CL_Policy_UE_BM2,POP_CA_Policy_BS_BM2,EE_BM2,filename+'BM2',isDetail=False,isEPS=False)
-        print('EE_BM2',EE_BM2)
+        filename = 'data/'+env.TopologyCode+'/EVSampledPolicy_Topology/'+ env.TopologyName +'_Evaluation_'
+        # iterate each L
+        for l in range(1,env.L+1):
+            #------------------------------------------------------------------------------------------------
+            # testing Benchmark 3
+            EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3 = env.getPolicy_BM3(nLink=l)
+            EE_BM3 = env.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
+            TP_BM3 = sum(env.Throughput)
+            Psys_BM3 = env.P_sys/1000 # mW->W
+            HR_BM3 = env.calHR(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BM3, CA_Policy_BS_BM3, EE_BM3,filename+'BM3'+'_L'+str(l),isDetail=False,isEPS=False)
+
+            poolEE_BM3[l][i]    =EE_BM3
+            poolTP_BM3[l][i]    =TP_BM3
+            poolPsys_BM3[l][i]  =Psys_BM3
+            poolHR_BM3[l][i]    =HR_BM3
+            poolMCAP_BM3[l][i]  =env.missCounterAP
+            poolMCCPU_BM3[l][i] =env.missCounterCPU
+            poolCL_BM3[l][i]    =CL_Policy_UE_BM3
+            poolCA_BM3[l][i]    =CA_Policy_BS_BM3
+            print('EE_BM3'+'_L'+str(l),'=', EE_BM3)
+            #------------------------------------------------------------------------------------------------
+            # Benchmark 1    
+            EE_BM1, CL_Policy_UE_BM1, CA_Policy_BS_BM1 = env.getPolicy_BM1(cacheMode='pref',nLink=l)
+            EE_BM1 = env.calEE(CL_Policy_UE_BM1,CA_Policy_BS_BM1)
+            TP_BM1 = sum(env.Throughput)
+            Psys_BM1 = env.P_sys/1000 # mW->W
+            HR_BM1 = env.calHR(CL_Policy_UE_BM1,CA_Policy_BS_BM1)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BM1, CA_Policy_BS_BM1, EE_BM1,filename+'BM1'+'_L'+str(l),isDetail=False,isEPS=False)
+
+            poolEE_BM1[l][i]    =EE_BM1
+            poolTP_BM1[l][i]    =TP_BM1
+            poolPsys_BM1[l][i]  =Psys_BM1
+            poolHR_BM1[l][i]    =HR_BM1
+            poolMCAP_BM1[l][i]  =env.missCounterAP
+            poolMCCPU_BM1[l][i] =env.missCounterCPU
+            poolCL_BM1[l][i]    =CL_Policy_UE_BM1
+            poolCA_BM1[l][i]    =CA_Policy_BS_BM1
+            print('EE_BM1'+'_L'+str(l),'=', EE_BM1)
+            
+            # Benchmark 2  
+            EE_BM2, CL_Policy_UE_BM2, CA_Policy_BS_BM2 = env.getPolicy_BM2(nLink=l)
+            EE_BM2 = env.calEE(CL_Policy_UE_BM2,CA_Policy_BS_BM2)
+            TP_BM2 = sum(env.Throughput)
+            Psys_BM2 = env.P_sys/1000 # mW->W
+            HR_BM2 = env.calHR(CL_Policy_UE_BM2,CA_Policy_BS_BM2)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BM2, CA_Policy_BS_BM2, EE_BM2,filename+'BM2'+'_L'+str(l),isDetail=False,isEPS=False)
+
+            poolEE_BM2[l][i]    =EE_BM2
+            poolTP_BM2[l][i]    =TP_BM2
+            poolPsys_BM2[l][i]  =Psys_BM2
+            poolHR_BM2[l][i]    =HR_BM2
+            poolMCAP_BM2[l][i]  =env.missCounterAP
+            poolMCCPU_BM2[l][i] =env.missCounterCPU
+            poolCL_BM2[l][i]    =CL_Policy_UE_BM2
+            poolCA_BM2[l][i]    =CA_Policy_BS_BM2
+            print('EE_BM2'+'_L'+str(l),'=', EE_BM2)
+        
         #------------------------------------------------------------------------------------------------
         # Derive Policy: BF
         #EE_BF, BF_CL_Policy_UE, BF_CA_Policy_BS = env.getOptEE_BF(isSave=True)
