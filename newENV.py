@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Public Lib
 import gym
 from gym import spaces
@@ -16,6 +18,7 @@ import multiprocessing
 from tqdm import tqdm
 import concurrent.futures
 from datetime import date
+
 today = date.today()
 #####################################
 num_cores = multiprocessing.cpu_count()
@@ -68,12 +71,14 @@ noise power = 20MHz × 1.381e-23 × 300K × 9dB =7.457e-13 (W)
 '''
 #####################################
 # plot size
+
 font = {'family' : 'Verdana',
         'weight' : 'normal',
         'size'   : 13}
 
 matplotlib.rc('font', **font)
 markerSize = 20*4**1
+
 #####################################
 def UE_SBS_location_distribution(lambda0): #PPP
     xx0=0; yy0=0; # centre of disk
@@ -138,6 +143,7 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
             plt.annotate("%s" % 'I='+str( "{:.2f}".format(env.I[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.06),color=color[u], fontsize=10)
             # plot SINR
             plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u], fontsize=10)
+            
         # plot Clustering
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
@@ -149,19 +155,13 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     plt.xlabel("x (km)",fontsize=14); plt.ylabel("y (km)",fontsize=14)
     plt.tight_layout()
     EE = "{:.2f}".format(EE)
-    #plt.title('Policy Visulization\n'+methodName+' Sampled EE:'+str(EE))
-    plt.axis('equal')
-    #plt.legend(loc='upper right')
-    #plt.axis([-0.7, 0.6, -0.6, 0.6])
+    plt.title(methodName+' Sampled EE:'+str(EE))
+    #plt.axis('equal')
+    plt.axis([-0.7, 0.6, -0.6, 0.6])
     plt.legend(loc = 'lower left', fontsize=10)
-    #plt.show()
-    fig = plt.gcf()
-    if filename:
-        fig.savefig(filename +'_EE_'+str(EE)+ '.png', format='png',dpi=1200)
-        if isEPS:
-            fig.savefig(filename +'_EE_'+str(EE)+ '.eps', format='eps',dpi=1200)
-    #fig.show()
-    #fig.canvas.draw()
+    plt.savefig(filename +'.png', format='png',dpi=120)
+    if isEPS:
+        plt.savefig(filename +'.eps', format='eps',dpi=120)
 
 class BS(gym.Env):
 
@@ -244,8 +244,9 @@ class BS(gym.Env):
         for u in range(self.U):
             self.Req[u] = self.genUserRequest(self.userPreference[u])
 
-    def __init__(self,nBS,nUE,nMaxLink,nFile,nMaxCache,loadENV,SEED=0):
+    def __init__(self,nBS,nUE,nMaxLink,nFile,nMaxCache,loadENV,SEED=0,obsIdx=1):
         self.SEED=SEED
+        self.obsIdx = obsIdx
         self.B = nBS # number of BS
         self.U = nUE # number of UE
         self.L = nMaxLink # Max Link Capability of UE
@@ -326,25 +327,7 @@ class BS(gym.Env):
         self.clustering_state = np.zeros([self.B,self.U])
         self.caching_state = np.zeros([self.B,self.F])
         self.reqStatistic_norm = np.zeros(self.U*self.F)
-        # Oberservation Definition
-        '''
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
-        
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])
-        ''' 
-        # Paper Oberservation
-        self.s_ = np.hstack([   self.g.real.flatten(),
-                                self.g.imag.flatten(),
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()]) 
+        self.s_ = self.reset()
         #------------------------------------------------------------------
         
         self.dimActCL = self.B*self.U
@@ -356,30 +339,16 @@ class BS(gym.Env):
         self.observation_space = spaces.Box(low=0, high=float("inf"), shape=(len(self.s_),), dtype=np.float32)
 
     def reset(self):
-        '''
-        self.SINR = np.zeros(self.U)
-        self.clustering_state = np.zeros(self.B*self.U)
-        self.caching_state = np.zeros(self.B*self.F)
-        self.reqStatistic_norm = np.zeros(self.U*self.F)
-        '''
-        # Oberservation Definition
-        '''
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
-        
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])
-        ''' 
-        # Paper Oberservation
-        self.s_ = np.hstack([  self.g.real.flatten(),
-                                self.g.imag.flatten(),
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
+        if self.obsIdx==1:  # OBS1 [Paper Oberservation]
+            self.s_ = np.hstack([  self.g.real.flatten(),
+                                    self.g.imag.flatten(),
+                                    self.clustering_state.flatten(),
+                                    self.caching_state.flatten(),
+                                    self.reqStatistic_norm.flatten()]) 
+        elif self.obsIdx==2:# OBS2
+            self.s_ = np.hstack([#self.SINR,
+                                self.g.real.flatten(),
+                                self.g.imag.flatten(),    
                                 self.reqStatistic_norm.flatten()]) 
         #------------------------------------------------------------------
         return self.s_
@@ -405,8 +374,8 @@ class BS(gym.Env):
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
             positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ] # unlimited
             selectedBS = np.intersect1d(maxLBS,positiveBS) # <=L
-            if selectedBS.size == 0:# gurantee all users are served
-                selectedBS = connectionScore[u].argsort()[::-1][:1]
+            #if selectedBS.size == 0:# gurantee all users are served
+            #    selectedBS = connectionScore[u].argsort()[::-1][:1]
             clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
@@ -443,35 +412,15 @@ class BS(gym.Env):
         clustering_state = np.zeros([self.U,self.B])
         for u in range(self.U):
             clustering_state[u][ list(clustering_policy_UE[u]) ]=1
-        #self.clustering_state = clustering_state
+        self.clustering_state = clustering_state
         #convert caching policy to binary form
         caching_state = np.zeros([self.B,self.F])
         for b in range(self.B):
             caching_state[b][ list(caching_policy_BS[b]) ] = 1
-        #self.caching_state = caching_state
-        # Oberservation Definition
-        '''
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()])
-        
-        self.s_ = np.hstack([   self.SINR,
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten(),
-                                self.Req.flatten()])
-        ''' 
-        # Paper Oberservation
-        self.s_ = np.hstack([  self.g.real.flatten(),
-                                self.g.imag.flatten(),
-                                self.clustering_state.flatten(),
-                                self.caching_state.flatten(),
-                                self.reqStatistic_norm.flatten()]) 
+        self.caching_state = caching_state
         #------------------------------------------------------------------
-        
         '''[20] Whether episode done'''
-        observation = self.s_
+        observation = self.reset()
         reward = self.EE
         done = self.done
         info = {"HR":self.HR}
@@ -607,16 +556,22 @@ class BS(gym.Env):
         self.P_sys = P_t*len(activatedBS) + P_bh * self.missCounterAP + P_bb * self.missCounterCPU  #+ self.B*P_o_SBS + P_o_MBS
         return self.P_sys
     
-    def getFile_CL_Policy(self,nLink):
-        SNR_CL_Policy_UE = []  
+    def getRand_CL_Policy(self,nLink):
+        CL_Policy_UE = [random.sample(range(self.B), nLink) for i in range(self.U)]
+        return CL_Policy_UE
+    def getRand_CA_Policy(self):
+        CA_Policy_BS = 
+
+    def getFile_CL_Policy(self,nLink,CA_Policy_BS):
         g_abs = abs(self.g) # g  = [B*U]
         g_absT = g_abs.T # g_absT= [U*B]
-        # kth UE determine the AP set (S_k)     
+        # kth UE determine the AP set (S_k)
+        '''     
         #　caching_state to CA_Policy_BS
         CA_Policy_BS = [[] for i in range(self.B)]
         for b in range(self.B):# inherit CA policy in previous time slot
             CA_Policy_BS[b] = [fileIdx for fileIdx, flag in enumerate(self.caching_state[b]) if flag == 1]
-        
+        '''
         CL_Policy_UE = [[] for i in range(self.U)]
         nonServedUE=[]
         for u in range(self.U):
@@ -624,26 +579,27 @@ class BS(gym.Env):
             if len(competeBS) == 0:
                 # no BS cache the desired file
                 # link nearest non avtive BS and put the request file into the cache
-                #CL_Policy_UE[u] = [randint(0,self.B-1)]
+                CL_Policy_UE[u] = [randint(0,self.B-1)]
                 nonServedUE.append(u)
             elif len(competeBS) <= nLink:
                 CL_Policy_UE[u] = competeBS
             else:
                 noCareBS = list(set(range(self.B))-set(competeBS))
                 g_absT[u][noCareBS] = 0
-                CL_Policy_UE[u] = g_absT[u].argsort()[::-1][:nLink]
-                #CL_Policy_UE[u] = random.sample(competeBS, nLink)
+                #CL_Policy_UE[u] = g_absT[u].argsort()[::-1][:nLink]
+                CL_Policy_UE[u] = random.sample(competeBS, nLink)
             #print('CL_Policy_UE['+str(u)+']=',CL_Policy_UE[u])
-        if len(nonServedUE) != 0:
-            for u in nonServedUE:
-                activatedBS = list(set([item for sublist in CL_Policy_UE for item in sublist]))
-                g_absT[u][activatedBS] = 0
-                selectBS = g_absT[u].argsort()[::-1][0]
-                #nonActiveBS = list(set(range(self.B))-set(activatedBS))
-                #selectBS = random.sample(nonActiveBS, 1)[0]
-                CA_Policy_BS[selectBS] = [self.Req[u]]
-                CL_Policy_UE[u] = [selectBS]
-        return CL_Policy_UE,CA_Policy_BS
+        '''
+        for u in nonServedUE:
+            activatedBS = list(set([item for sublist in CL_Policy_UE for item in sublist]))
+            g_absT[u][activatedBS] = 0
+            selectBS = g_absT[u].argsort()[::-1][0]
+            #nonActiveBS = list(set(range(self.B))-set(activatedBS))
+            #selectBS = random.sample(nonActiveBS, 1)[0]
+            CA_Policy_BS[selectBS] = [self.Req[u]]
+            CL_Policy_UE[u] = [selectBS]
+        '''
+        return CL_Policy_UE
 
     def getSNR_CL_Policy(self,nLink):
         g_abs = abs(self.g) # g  = [B*U]
@@ -724,8 +680,10 @@ class BS(gym.Env):
         # a design based solely on ${\cal F}_1, {\cal F}_2, \ldots,{\cal F}_M$ may favor the association of the $k$th user 
         # with the AP subset ${\cal S}_k$ that best aligns the content caching status and user requests, 
         # as this may increase hit events and consequently decrease $P_{\rm total}$.
-        CL_Policy_UE_BM3,CA_Policy_BS_BM3 = self.getFile_CL_Policy(nLink)
-        #CA_Policy_BS_BM3 = self.getPOP_CA_Policy_Local(CL_Policy_UE_BM3,cacheMode='req')
+        #CA_Policy_BS_BM3 = self.getPOP_CA_Policy()
+        #CL_Policy_UE_BM3 = self.getFile_CL_Policy(nLink,CA_Policy_BS_BM3)
+        CL_Policy_UE_BM3 = self.getRand_CL_Policy(nLink)
+        CA_Policy_BS_BM3 = self.getPOP_CA_Policy_Local(CL_Policy_UE_BM3,cacheMode='pref')
         EE_BM3 = self.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
         return EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3
 
@@ -848,28 +806,10 @@ if __name__ == "__main__":
         # Build ENV
         # env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
         env = BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = False,SEED=i)
-        
+        env.random_CL_Policy(env.L)
         filename = 'data/'+env.TopologyCode+'/EVSampledPolicy_Topology/'+ env.TopologyName +'_Evaluation_'
         # iterate each L
         for l in range(1,env.L+1):
-            #------------------------------------------------------------------------------------------------
-            # testing Benchmark 3
-            EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3 = env.getPolicy_BM3(nLink=l)
-            EE_BM3 = env.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
-            TP_BM3 = sum(env.Throughput)
-            Psys_BM3 = env.P_sys/1000 # mW->W
-            HR_BM3 = env.calHR(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
-            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BM3, CA_Policy_BS_BM3, EE_BM3,filename+'BM3'+'_L'+str(l),isDetail=False,isEPS=False)
-
-            poolEE_BM3[l][i]    =EE_BM3
-            poolTP_BM3[l][i]    =TP_BM3
-            poolPsys_BM3[l][i]  =Psys_BM3
-            poolHR_BM3[l][i]    =HR_BM3
-            poolMCAP_BM3[l][i]  =env.missCounterAP
-            poolMCCPU_BM3[l][i] =env.missCounterCPU
-            poolCL_BM3[l][i]    =CL_Policy_UE_BM3
-            poolCA_BM3[l][i]    =CA_Policy_BS_BM3
-            print('EE_BM3'+'_L'+str(l),'=', EE_BM3)
             #------------------------------------------------------------------------------------------------
             # Benchmark 1    
             EE_BM1, CL_Policy_UE_BM1, CA_Policy_BS_BM1 = env.getPolicy_BM1(cacheMode='pref',nLink=l)
@@ -888,7 +828,7 @@ if __name__ == "__main__":
             poolCL_BM1[l][i]    =CL_Policy_UE_BM1
             poolCA_BM1[l][i]    =CA_Policy_BS_BM1
             print('EE_BM1'+'_L'+str(l),'=', EE_BM1)
-            
+            #------------------------------------------------------------------------------------------------
             # Benchmark 2  
             EE_BM2, CL_Policy_UE_BM2, CA_Policy_BS_BM2 = env.getPolicy_BM2(nLink=l)
             EE_BM2 = env.calEE(CL_Policy_UE_BM2,CA_Policy_BS_BM2)
@@ -906,6 +846,25 @@ if __name__ == "__main__":
             poolCL_BM2[l][i]    =CL_Policy_UE_BM2
             poolCA_BM2[l][i]    =CA_Policy_BS_BM2
             print('EE_BM2'+'_L'+str(l),'=', EE_BM2)
+            #------------------------------------------------------------------------------------------------
+            # testing Benchmark 3
+            EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3 = env.getPolicy_BM3(nLink=l)
+            EE_BM3 = env.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
+            TP_BM3 = sum(env.Throughput)
+            Psys_BM3 = env.P_sys/1000 # mW->W
+            HR_BM3 = env.calHR(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
+            plot_UE_BS_distribution_Cache(env, CL_Policy_UE_BM3, CA_Policy_BS_BM3, EE_BM3,filename+'BM3'+'_L'+str(l),isDetail=False,isEPS=False)
+
+            poolEE_BM3[l][i]    =EE_BM3
+            poolTP_BM3[l][i]    =TP_BM3
+            poolPsys_BM3[l][i]  =Psys_BM3
+            poolHR_BM3[l][i]    =HR_BM3
+            poolMCAP_BM3[l][i]  =env.missCounterAP
+            poolMCCPU_BM3[l][i] =env.missCounterCPU
+            poolCL_BM3[l][i]    =CL_Policy_UE_BM3
+            poolCA_BM3[l][i]    =CA_Policy_BS_BM3
+            print('EE_BM3'+'_L'+str(l),'=', EE_BM3)
+            
         
         #------------------------------------------------------------------------------------------------
         # Derive Policy: BF
