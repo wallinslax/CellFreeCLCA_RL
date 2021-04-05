@@ -22,6 +22,7 @@ from numpy.random import randn
 #from random import randint
 from tqdm import tqdm
 from datetime import date
+from datetime import datetime
 today = date.today()
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 import concurrent.futures
@@ -32,14 +33,20 @@ num_cores = multiprocessing.cpu_count()
 LOAD_EVN = True
 RESET_CHANNEL = True
 REQUEST_DUPLICATE = False
-MAX_EPISODES=1000
+MAX_EPISODES=500
 MAX_EP_STEPS=100
 warmup = -1
 epsilon = 0.2
 #####################################
 # plot style
 '''
-font = {'family' : 'Verdana',
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+'''
+'''
+font = {'family' : 'sans-serif',
         'weight' : 'normal',
         'size'   : 14}
 
@@ -68,65 +75,6 @@ def plotMetric(poolEE,poolBestEE):
     fig.show()
     fig.canvas.draw()
     plt.pause(0.001)
-
-def plotTopic(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=None,line_RL2act=None,line_BM1=None,line_BM2=None,line_BM3=None,isEPS=False):
-    plt.clf()
-    nXpt=len(line_BM1[0])
-    #---------------------------------------------------------------------------------------------
-    # plot Brute Force
-    if line_BF!=None:
-        plt.plot(range(nXpt),line_BF,'k:',label='Brute Force')
-        finalValue = "{:.2f}".format(line_BF[-1])
-        #plt.annotate(finalValue, (nXpt,line_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
-    #---------------------------------------------------------------------------------------------
-    # plot DDPG 1act
-    if line_RL1act != None:
-        plt.plot(range(nXpt),line_RL1act,'b-',label='DDPG 1act')
-        finalValue = "{:.2f}".format(line_RL1act[-1])
-        #plt.annotate(finalValue, (nXpt,line_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
-    #---------------------------------------------------------------------------------------------
-    # plot DDPG 2act
-    if line_RL2act != None:
-        plt.plot(range(nXpt),line_RL2act,'r-',label='DDPG 2act')
-        finalValue = "{:.2f}".format(line_RL2act[-1])
-        #plt.annotate(finalValue, (nXpt,line_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
-    #---------------------------------------------------------------------------------------------
-    if line_BM1!=None and line_BM2!=None and line_BM3!=None:
-        for l in [1,env.L]:
-        #for l in range(1,env.L+1):
-            # plot BM1
-            plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1'+'_L='+str(l))
-            finalValue = "{:.2f}".format(line_BM1[l][-1])
-            #plt.annotate(finalValue, (nXpt,line_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
-            # plot BM2
-            plt.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2'+'_L='+str(l))
-            finalValue = "{:.2f}".format(line_BM2[l][-1])
-            #plt.annotate(finalValue, (nXpt,line_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
-            # plot BM3
-            plt.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3'+'_L='+str(l))
-            finalValue = "{:.2f}".format(line_BM3[l][-1])
-            #plt.annotate(finalValue, (nXpt,line_BM3[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
-    #---------------------------------------------------------------------------------------------
-    '''
-    if 'Training' in filename:
-        phaseName = 'Training Phase'
-    elif 'Evaluation' in filename:
-        phaseName = 'Evaluation Phase'
-    elif 'Preview' in filename:
-        phaseName = 'Preview Phase'
-    plt.title(phaseName+': Energy Efficiency (EE)\n Topology:'+env.TopologyCode) # title
-    '''
-    plt.grid()
-    plt.legend()
-    plt.xlim(0,nXpt-1)
-    #plt.tight_layout()
-    plt.autoscale()
-    plt.xlabel(xLabel) # x label
-    plt.ylabel(yLabel) # y label
-    plt.yscale(yScale)
-    plt.savefig(filename + topic +'.png', format='png',dpi=600)
-    if isEPS:
-        plt.savefig(filename + topic +'.eps', format='eps',dpi=600)
 
 def plotHistory(env,filename,isEPS=False,loadBF=False):
     # Initialization
@@ -180,7 +128,7 @@ def plotHistory(env,filename,isEPS=False,loadBF=False):
         env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
     #--------------------------------------------------------------------------------------------- 
     # Plot EE/HR/TP/Psys/MCAP/MCCPU
-    plotTopic(env,filename,topic='EE',xLabel='t',yLabel='Bits/J',yScale='log',\
+    plotTopic(env,filename,topic='EE',xLabel='t',yLabel='Bits/J',yScale='linear',\
         line_BF=poolEE_BF,line_RL1act=poolEE_RL1act,line_RL2act=poolEE_RL2act,line_BM1=poolEE_BM1,line_BM2=poolEE_BM2,line_BM3=poolEE_BM3,isEPS=isEPS)
 
     plotTopic(env,filename,topic='HR',xLabel='t',yLabel='Ratio',yScale='linear',\
@@ -189,7 +137,7 @@ def plotHistory(env,filename,isEPS=False,loadBF=False):
     plotTopic(env,filename,topic='TP',xLabel='t',yLabel='Bits/s',yScale='linear',\
         line_BF=poolTP_BF,line_RL1act=poolTP_RL1act,line_RL2act=poolTP_RL2act,line_BM1=poolTP_BM1,line_BM2=poolTP_BM2,line_BM3=poolTP_BM3,isEPS=isEPS)
 
-    plotTopic(env,filename,topic='Psys',xLabel='t',yLabel='W',yScale='log',\
+    plotTopic(env,filename,topic='Psys',xLabel='t',yLabel='W',yScale='linear',\
         line_BF=poolPsys_BF,line_RL1act=poolPsys_RL1act,line_RL2act=poolPsys_RL2act,line_BM1=poolPsys_BM1,line_BM2=poolPsys_BM2,line_BM3=poolPsys_BM3,isEPS=isEPS)
 
     plotTopic(env,filename,topic='MCAP',xLabel='t',yLabel='Counts',yScale='linear',\
@@ -221,6 +169,67 @@ def plotHistory(env,filename,isEPS=False,loadBF=False):
             fig.savefig(filename + 'Loss.eps', format='eps',dpi=120)
         '''
     #---------------------------------------------------------------------------------------------   
+
+def plotTopic(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=None,line_RL2act=None,line_BM1=None,line_BM2=None,line_BM3=None,isEPS=False):
+    plt.clf()
+    nXpt=len(line_BM1[0])
+    #---------------------------------------------------------------------------------------------
+    # plot Brute Force
+    if line_BF!=None:
+        plt.plot(range(nXpt),line_BF,'k:',label='Brute Force')
+        finalValue = "{:.2f}".format(line_BF[-1])
+        #plt.annotate(finalValue, (nXpt,line_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
+    #---------------------------------------------------------------------------------------------
+    # plot DDPG 1act
+    if line_RL1act != None:
+        plt.plot(range(nXpt),line_RL1act,'b-',label='Proposed')
+        finalValue = "{:.2f}".format(line_RL1act[-1])
+        #plt.annotate(finalValue, (nXpt,line_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
+    #---------------------------------------------------------------------------------------------
+    # plot DDPG 2act
+    if line_RL2act != None:
+        plt.plot(range(nXpt),line_RL2act,'r-',label='Proposed 2act')
+        finalValue = "{:.2f}".format(line_RL2act[-1])
+        #plt.annotate(finalValue, (nXpt,line_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
+    #---------------------------------------------------------------------------------------------
+    if line_BM1!=None and line_BM2!=None and line_BM3!=None:
+        for l in [1,env.L]:
+        #for l in range(1,env.L+1):
+            # plot BM1
+            #plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1('+r'$l=$'+str(l)+')')
+            plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1(l='+str(l)+')')
+            finalValue = "{:.2f}".format(line_BM1[l][-1])
+            #plt.annotate(finalValue, (nXpt,line_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
+            # plot BM2
+            plt.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2(l='+str(l)+')')
+            finalValue = "{:.2f}".format(line_BM2[l][-1])
+            #plt.annotate(finalValue, (nXpt,line_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+            # plot BM3
+            plt.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3(l='+str(l)+')')
+            finalValue = "{:.2f}".format(line_BM3[l][-1])
+            #plt.annotate(finalValue, (nXpt,line_BM3[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
+    #---------------------------------------------------------------------------------------------
+    '''
+    if 'Training' in filename:
+        phaseName = 'Training Phase'
+    elif 'Evaluation' in filename:
+        phaseName = 'Evaluation Phase'
+    elif 'Preview' in filename:
+        phaseName = 'Preview Phase'
+    plt.title(phaseName+': Energy Efficiency (EE)\n Topology:'+env.TopologyCode) # title
+    '''
+    plt.grid()
+    plt.legend()
+    plt.xlim(0,nXpt-1)
+    #plt.tight_layout()
+    plt.autoscale()
+    plt.xlabel(xLabel) # x label
+    #plt.xlabel(r'x') # x label
+    plt.ylabel(yLabel) # y label
+    plt.yscale(yScale)
+    plt.savefig(filename + topic +'.png', format='png',dpi=120)
+    if isEPS:
+        plt.savefig(filename + topic +'.eps', format='eps',dpi=600)
 
 def trainModel(env,actMode,changeReq,changeChannel,loadActor,randSEED=0):
     # new ACT 
@@ -477,9 +486,16 @@ def trainModel(env,actMode,changeReq,changeChannel,loadActor,randSEED=0):
     dir = 'data/'+env.TopologyCode+'/Preview/'
     for f in os.listdir(dir):
         os.remove(os.path.join(dir, f))
-    return max(poolEE_RL)
+    if min(poolEE_RL)>= max(poolEE_BM1[1]):
+        return True
+    else:
+        return False
     
-def evaluateModel(env,actMode, nItr=100, randSEED=0):
+def evaluateModel(env,actMode, nItr=100, randSEED=0,isBF=False,loadCT=False):
+    # load channel Trajectory
+    filename = 'data/'+env.TopologyCode+'/Topology/['+str(env.SEED)+']Topology_'+ env.TopologyName 
+    with open(filename+'CT.pkl','rb') as f: 
+        channelTrajectory = pickle.load(f)
     # new ACT 
     modelPath = 'data/'+env.TopologyCode+'/Model/'
     if actMode == '2act':
@@ -614,7 +630,7 @@ def evaluateModel(env,actMode, nItr=100, randSEED=0):
         poolCA_RL[ep]   = CA_Policy_BS_RL
 
         # BF
-        if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+        if env.B==4 and env.U ==4 and env.F==5 and env.N==2 and isBF:
             print('Calculate BF itr index:',ep)
             EE_BF, CL_Policy_UE_BF, CA_Policy_BS_BF = env.getOptEE_BF(isSave=True)
             EE_BF = env.calEE(CL_Policy_UE_BF,CA_Policy_BS_BF)
@@ -632,9 +648,12 @@ def evaluateModel(env,actMode, nItr=100, randSEED=0):
             poolCA_BF[ep] = CA_Policy_BS_BF
         
         # Change Environment
-        env.timeVariantChannel()
+        if loadCT:
+            env.g = channelTrajectory[ep]
+        else:
+            env.timeVariantChannel()
         #env.resetReq()
-
+    '''
     # Sample CL/CA Policy Visualization
     sampled = int(nItr/2)
     filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
@@ -648,10 +667,10 @@ def evaluateModel(env,actMode, nItr=100, randSEED=0):
         plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1_L'+str(l),isEPS=False)
         plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2_L'+str(l),isEPS=False)
         plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3_L'+str(l),isEPS=False)
-    
+    '''
     # Save Line
     filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
-    if env.B==4 and env.U ==4 and env.F==5 and env.N==2:
+    if env.B==4 and env.U ==4 and env.F==5 and env.N==2 and isBF:
         with open(filename+ 'BF.pkl', 'wb') as f:  
             pickle.dump([env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF,poolCL_BF,poolCA_BF], f)
     with open(filename+ actMode +'RL.pkl', 'wb') as f:  
@@ -701,53 +720,102 @@ if __name__ == '__main__':
     actMode = '1act'
     envSeed = 0
     nItr = 100
-    
-    # Good case: 4.4.5.2 [0,2,5,12,19,25,26,36,39,43] / 10.5.20.2 [3,6]
-    #for randSEED in range(0,20):
-    for randSEED in [3]:
+    # Good case: 4.4.5.2 [31] / 10.5.20.2 [3,6]
+    for randSEED in range(1,30):
+    #for randSEED in [31]:
         print('randSEED:',randSEED)
+        print('Execution Timestamp:',datetime.now())
         #####################  hyper parameters  ####################
         # Random Seed
         np.random.seed(randSEED)
         torch.manual_seed(randSEED)
         torch.cuda.manual_seed_all(randSEED)
         max_EE = -1
+        allWin=False
         #------------------------------------------------------------------------
-        '''
+        
         # Training Phase
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
-        max_EE = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,randSEED=randSEED) 
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0,obsIdx=2)
+        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
+        allWin = trainModel(env,actMode=actMode,changeReq=False, changeChannel=True, loadActor = False,randSEED=randSEED) 
         filename = 'data/'+env.TopologyCode+'/TrainingPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +str(MAX_EPISODES*MAX_EP_STEPS)+'_Train_'
         plotHistory(env,filename,isEPS=False,loadBF=False)
-        '''
+        
         #------------------------------------------------------------------------
+        
         # Evaluation Phase
         # new ENV
-        #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0)
-        env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
-        if max_EE>100 or max_EE==-1:
-            lossCount = evaluateModel(env,actMode=actMode, nItr=nItr,randSEED=randSEED)
-            
+        env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0,obsIdx=2)
+        #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
+        if allWin or max_EE==-1:
+            lossCount = evaluateModel(env,actMode=actMode, nItr=nItr,randSEED=randSEED,loadCT=True,isBF=True)
+            # Plot Performance
+            filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
+            plotHistory(env,filename,isEPS=False,loadBF=False)
+        
     #==============================================================================================
+    '''
     # plot Evaluation Final for 4.4.5.2
-
+    envSeed=0
+    randSEED=31
+    nItr = 10
+    sampled = int(nItr/2)
+    # new ENV
+    env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
+    filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
+    plotHistory(env,filename,isEPS=True,loadBF=True)
+    #------------------------------------------------------------------------
+    # Plot Sampled CL/CA Policy Visualization
+    # Load Brute Force Policy
+    with open(filename+ 'BF.pkl', 'rb') as f:
+        env, poolEE_BF,poolTP_BF,poolPsys_BF,poolHR_BF,poolMCAP_BF,poolMCCPU_BF,poolCL_BF,poolCA_BF = pickle.load(f)
+    # Load RL Policies
+    with open(filename+'BF.pkl','rb') as f:
+        env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
+    with open(filename+ actMode +'RL.pkl','rb') as f:
+        env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolMCAP_RL,poolMCCPU_RL,poolCL_RL,poolCA_RL\
+            ,poolLossActor,poolLossCritic = pickle.load(f)
+    # Load Benchmarks Policies
+    with open(filename+'BM1.pkl','rb') as f: 
+        env, poolEE_BM1,poolTP_BM1,poolPsys_BM1,poolHR_BM1,poolMCAP_BM1,poolMCCPU_BM1,poolCL_BM1,poolCA_BM1 = pickle.load(f)
+    with open(filename+'BM2.pkl','rb') as f:
+        env, poolEE_BM2,poolTP_BM2,poolPsys_BM2,poolHR_BM2,poolMCAP_BM2,poolMCCPU_BM2,poolCL_BM2,poolCA_BM2 = pickle.load(f)
+    with open(filename+'BM3.pkl','rb') as f:
+        env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
+    #
+    filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
+    # BF PV
+    plot_UE_BS_distribution_Cache(env, poolCL_BF[sampled], poolCA_BF[sampled], poolEE_BF[sampled],filename+'BF',isEPS=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_BF[sampled], poolCA_BF[sampled], poolEE_BF[sampled],filename+'BF',isDetail=True)
+    # RL PV
+    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isDetail=True)
+    # BM PV
+    for l in [1,env.L]:
+        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
+        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isDetail=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isDetail=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isDetail=True) 
+    
+    '''
     #==============================================================================================    
     # plot Evaluation Final for 10.5.20.2
+    '''
     envSeed = 0
     randSEED = 3
     nItr = 100
+    sampled = int(nItr/2)
     # new ENV
     env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
     #------------------------------------------------------------------------
     # Plot Performance
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
-    plotHistory(env,filename,isEPS=False,loadBF=False)
+    filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
+    plotHistory(env,filename,isEPS=True,loadBF=False)
     #------------------------------------------------------------------------
     # Plot Sampled CL/CA Policy Visualization
-    sampled = int(nItr/2)
-    filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
     # Load RL Policies
     with open(filename+ actMode +'RL.pkl','rb') as f:
         env, poolEE_RL,poolTP_RL,poolPsys_RL,poolHR_RL,poolMCAP_RL,poolMCCPU_RL,poolCL_RL,poolCA_RL\
@@ -760,14 +828,19 @@ if __name__ == '__main__':
     with open(filename+'BM3.pkl','rb') as f:
         env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
     #
-    filename = 'data/'+env.TopologyCode+'/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
+    filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
     # RL PV
-    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+actMode+'RL',isEPS=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isDetail=True)
     # BM PV
     for l in [1,env.L]:
-        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1-L'+str(l),isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2-L'+str(l),isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3-L'+str(l),isEPS=True) 
+        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
+        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isDetail=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isDetail=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isDetail=True) 
+    '''
     #==============================================================================================
     # multi-instance training
     '''

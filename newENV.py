@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Public Lib
 import gym
@@ -7,10 +8,10 @@ import numpy as np
 from numpy import linalg as LA
 from numpy.random import randn
 from random import randint
-import scipy.stats
+#import scipy.stats
 import os,math,random,itertools,csv,pickle,inspect,torch
 from itertools import combinations,permutations,product
-import matplotlib,random
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.pyplot import cm
@@ -143,7 +144,17 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
             plt.annotate("%s" % 'I='+str( "{:.2f}".format(env.I[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.06),color=color[u], fontsize=10)
             # plot SINR
             plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u], fontsize=10)
-            
+            # plot TP
+            plt.annotate("%s" % 'TP='+str( "{:.2f}".format(sum(env.Throughput)) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.12),color=color[u], fontsize=10)
+            # plot P_sys
+            plt.annotate("%s" % 'P_sys='+str( "{:.2f}".format(env.P_sys) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.15),color=color[u], fontsize=10)
+            # activeBS
+            activatedBS = list(set([item for sublist in clustering_policy_UE for item in sublist]))
+            plt.annotate("%s" % '#actBS='+str( "{:.2f}".format(len(activatedBS)) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.18),color=color[u], fontsize=10)
+            # MCAP
+            plt.annotate("%s" % 'MCAP='+str( "{:.2f}".format(env.missCounterAP) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.21),color=color[u], fontsize=10)
+            # MCCPU
+            plt.annotate("%s" % 'MCCPU='+str( "{:.2f}".format(env.missCounterCPU) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.24),color=color[u], fontsize=10)
         # plot Clustering
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
@@ -155,13 +166,18 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     plt.xlabel("x (km)",fontsize=14); plt.ylabel("y (km)",fontsize=14)
     plt.tight_layout()
     EE = "{:.2f}".format(EE)
-    plt.title(methodName+' Sampled EE:'+str(EE))
+    plt.title(methodName+' sampled EE:'+str(EE))
     #plt.axis('equal')
-    plt.axis([-0.7, 0.6, -0.6, 0.6])
-    plt.legend(loc = 'lower left', fontsize=10)
-    plt.savefig(filename +'.png', format='png',dpi=120)
-    if isEPS:
-        plt.savefig(filename +'.eps', format='eps',dpi=120)
+    #plt.axis([-0.7, 0.6, -0.6, 0.6]) # 10.5.20.2
+    plt.axis([-0.2, 0.5, -0.2, 0.5]) # 4.4.5.2
+    #plt.legend(loc = 'lower left', fontsize=10)
+    plt.legend(loc = 'upper right', fontsize=10)
+    if isDetail:
+        plt.savefig(filename +'Detailed.png', format='png',dpi=120)
+    else:
+        plt.savefig(filename +'.png', format='png',dpi=120)
+        if isEPS:
+            plt.savefig(filename +'.eps', format='eps',dpi=120)
 
 class BS(gym.Env):
 
@@ -345,7 +361,12 @@ class BS(gym.Env):
                                     self.clustering_state.flatten(),
                                     self.caching_state.flatten(),
                                     self.reqStatistic_norm.flatten()]) 
-        elif self.obsIdx==2:# OBS2
+        elif self.obsIdx==2:  # OBS2 [Paper Oberservation]
+            self.s_ = np.hstack([  self.g.real.flatten(),
+                                    self.g.imag.flatten(),
+                                    self.clustering_state.flatten(),
+                                    self.caching_state.flatten()]) 
+        elif self.obsIdx==3:# OBS3
             self.s_ = np.hstack([#self.SINR,
                                 self.g.real.flatten(),
                                 self.g.imag.flatten(),    
@@ -374,8 +395,8 @@ class BS(gym.Env):
             maxLBS = connectionScore[u].argsort()[::-1][:self.L] # limit RL connection number to L
             positiveBS = [ i for (i,v) in enumerate(connectionScore[u]) if v >= 0 ] # unlimited
             selectedBS = np.intersect1d(maxLBS,positiveBS) # <=L
-            #if selectedBS.size == 0:# gurantee all users are served
-            #    selectedBS = connectionScore[u].argsort()[::-1][:1]
+            if selectedBS.size == 0:# gurantee all users are served
+                selectedBS = connectionScore[u].argsort()[::-1][:1]
             clustering_policy_UE.append(selectedBS)
         
         # Convert action value to policy //Caching Part
@@ -559,8 +580,6 @@ class BS(gym.Env):
     def getRand_CL_Policy(self,nLink):
         CL_Policy_UE = [random.sample(range(self.B), nLink) for i in range(self.U)]
         return CL_Policy_UE
-    def getRand_CA_Policy(self):
-        CA_Policy_BS = 
 
     def getFile_CL_Policy(self,nLink,CA_Policy_BS):
         g_abs = abs(self.g) # g  = [B*U]
@@ -680,10 +699,10 @@ class BS(gym.Env):
         # a design based solely on ${\cal F}_1, {\cal F}_2, \ldots,{\cal F}_M$ may favor the association of the $k$th user 
         # with the AP subset ${\cal S}_k$ that best aligns the content caching status and user requests, 
         # as this may increase hit events and consequently decrease $P_{\rm total}$.
-        #CA_Policy_BS_BM3 = self.getPOP_CA_Policy()
-        #CL_Policy_UE_BM3 = self.getFile_CL_Policy(nLink,CA_Policy_BS_BM3)
-        CL_Policy_UE_BM3 = self.getRand_CL_Policy(nLink)
-        CA_Policy_BS_BM3 = self.getPOP_CA_Policy_Local(CL_Policy_UE_BM3,cacheMode='pref')
+        CA_Policy_BS_BM3 = self.getPOP_CA_Policy()
+        CL_Policy_UE_BM3 = self.getFile_CL_Policy(nLink,CA_Policy_BS_BM3)
+        #CL_Policy_UE_BM3 = self.getRand_CL_Policy(nLink)
+        #CA_Policy_BS_BM3 = self.getPOP_CA_Policy_Local(CL_Policy_UE_BM3,cacheMode='pref')
         EE_BM3 = self.calEE(CL_Policy_UE_BM3,CA_Policy_BS_BM3)
         return EE_BM3, CL_Policy_UE_BM3, CA_Policy_BS_BM3
 
@@ -766,9 +785,23 @@ class BS(gym.Env):
         pass
 
 if __name__ == "__main__":
-    # CASE [11]
+    # create Channel Trajectory
+    #env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0,obsIdx=1)
+    env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = True,SEED=0,obsIdx=1)
+    channelTrajectory = []
+    for i in range(100):
+        channelTrajectory.append(env.g)
+        env.timeVariantChannel()
+    filename = 'data/'+env.TopologyCode+'/Topology/['+str(env.SEED)+']Topology_'+ env.TopologyName #+ str(today)
+    with open(filename+'CT.pkl', 'wb') as f:
+        pickle.dump(channelTrajectory, f)
+    
+    with open(filename+'CT.pkl','rb') as f: 
+        channelTrajectoryX = pickle.load(f)
+    print(len(channelTrajectoryX))
+    #-------------------------------------------------------
     nMaxLink = 3
-    tryCount = 20
+    tryCount = 100
     # BM1 Initialization
     poolEE_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
     poolTP_BM1 = [[0]*tryCount  for i in range(nMaxLink+1)]
@@ -805,8 +838,13 @@ if __name__ == "__main__":
         torch.cuda.manual_seed_all(SEED)
         # Build ENV
         # env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=i)
-        env = BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = False,SEED=i)
-        env.random_CL_Policy(env.L)
+        env = BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = True,SEED=i)
+        env.Req[1]=10
+        env.Req[2]=10
+        filename = 'data/'+env.TopologyCode+'/Topology/['+str(99)+']Topology_'+ env.TopologyName #+ str(today)
+        with open(filename + '.pkl', 'wb') as f: 
+            pickle.dump([env.bs_coordinate, env.u_coordinate, env.pl, env.h, env.g, env.userPreference, env.Req], f)
+        plot_UE_BS_distribution_Cache(env,None,None,0,filename,isEPS=False)
         filename = 'data/'+env.TopologyCode+'/EVSampledPolicy_Topology/'+ env.TopologyName +'_Evaluation_'
         # iterate each L
         for l in range(1,env.L+1):
