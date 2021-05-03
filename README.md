@@ -1,10 +1,11 @@
 # CellFreeCLCA_RL
 The simulation of paper: Joint Cooperation Clustering and Content Caching in Cell-Free Massive MIMO Networks.
 
-A. Directory description
-Topology: data/{topology name}/Topology
-Model: data/{topology name}/Model  EX: data/4.4.5.2/Model
-
+A. Directory Path
+  Topology:           data/{topology name}/Topology 
+  Model:              data/{topology name}/Model
+  performance figure: data/{topology name}/EvaluationPhase
+  Sampled policy:     data/{topology name}/EVSampledPolicy
 
 B. Code mainbody: 
   1. newSimulate.py
@@ -14,4 +15,9 @@ B. Code mainbody:
 C. Dependency:
   newSimulate.py <- newENV.py
   newSimulate.py <- newDDPG.py
-  
+
+D. Standard model training and evaluation procedure:
+  1. Train model using trainModel()
+  2. Evaluate trained model using evaluateModel()
+  3. plot evaluation result using plotHistory(), the function can plot EE/HR/TP/Psys/MCAP/MCCPU
+  4. plot policy sampled in evaluation phase using plot_UE_BS_distribution_Cache()
