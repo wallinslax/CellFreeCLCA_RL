@@ -75,7 +75,7 @@ noise power = 20MHz × 1.381e-23 × 300K × 9dB =7.457e-13 (W)
 
 font = {'family' : 'Verdana',
         'weight' : 'normal',
-        'size'   : 13}
+        'size'   : 14}
 
 matplotlib.rc('font', **font)
 markerSize = 20*4**1
@@ -105,37 +105,24 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
     # AP
     xx_bs = env.bs_coordinate[:,0]
     yy_bs = env.bs_coordinate[:,1]
-    plt.scatter(xx_bs, yy_bs, edgecolor='k', facecolor='k',marker='^', alpha=1 ,label='AP',s=markerSize)
+    plt.scatter(xx_bs, yy_bs, edgecolor='k', facecolor='k',marker='^', alpha=1 ,label='AP',s=markerSize)# AP marker
     b = 0
     for x,y in zip(xx_bs, yy_bs):
-        #plt.annotate("%s" % 'AP'+str(b), xy=(x,y), xytext=(x, y-0.04),color='k')#label index
-        plt.annotate("%s" % b, xy=(x,y), xytext=(x, y-0.06),color='k')#label index
+        #plt.annotate("%s" % (b+1), xy=(x,y), xytext=(x, y-0.06),color='k')# AP index 4.4.5.2
+        plt.annotate("%s" % (b+1), xy=(x,y), xytext=(x, y-0.07),color='k')# AP index 10.5.20.2
         if caching_policy_BS:
-            plt.annotate("%s" % str(list(caching_policy_BS[b])), xy=(x,y), xytext=(x-0.03, y+0.03),color='k')#label cache
+            #plt.annotate("%s" % str(list(caching_policy_BS[b])), xy=(x,y), xytext=(x-0.03, y+0.03),color='k')# AP cache
+            plt.annotate("%s" % str([ x+1 for x in caching_policy_BS[b] ]), xy=(x,y), xytext=(x-0.03, y+0.03),color='k')#AP cache
         b = b+1
     # UE
-    '''
-    xx_u = env.u_coordinate[:,0]
-    yy_u = env.u_coordinate[:,1]
-    plt.scatter(xx_u, yy_u, edgecolor='b', facecolor='none',marker='X', alpha=0.5 ,label='UE')
-    u = 0
-    for x,y in zip(xx_u,yy_u):
-        plt.annotate("%s" % u, xy=(x,y), xytext=(x, y-0.03),color='b')#label index
-        plt.annotate("%s" % 'env.Req:'+str(env.Req[u]), xy=(x,y), xytext=(x, y),color='red')
-        u = u+1
-    '''
-    #cluster plot
-    #color =np.array( ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'fuchsia','peachpuff','pink'])
     nUE=len(env.u_coordinate)
     color=cm.rainbow(np.linspace(0,1,nUE))
     for u in range(nUE):
         xx_u = env.u_coordinate[u,0]
         yy_u = env.u_coordinate[u,1]
-        plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u),s=markerSize)
-        #plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.04),color=color[u])#label index
-        #plt.annotate("%s" % 'UE'+str(u)+' ['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.05, yy_u+0.015),color=color[u])
-        # plot Request
-        plt.annotate("%s" % '['+str(env.Req[u])+']', xy=(xx_u,yy_u), xytext=(xx_u-0.03, yy_u+0.03),color=color[u])
+        plt.scatter(xx_u, yy_u, edgecolor=color[u], facecolor='none',marker='X', alpha=0.5 ,label='UE'+str(u+1),s=markerSize)# UE marker
+        #plt.annotate("%s" % u, xy=(xx_u,yy_u), xytext=(xx_u, yy_u-0.04),color=color[u])# UE index
+        plt.annotate("%s" % '['+str(env.Req[u]+1)+']', xy=(xx_u,yy_u), xytext=(xx_u-0.03, yy_u+0.03),color=color[u])# UE Req
         if isDetail:
             EE=env.calEE(clustering_policy_UE,caching_policy_BS)
             # plot P_r
@@ -145,9 +132,7 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
             # plot SINR
             plt.annotate("%s" % 'SINR='+str( "{:.2f}".format(env.SINR[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.09),color=color[u], fontsize=10)
             # plot TP
-            plt.annotate("%s" % 'TP='+str( "{:.2f}".format(sum(env.Throughput)) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.12),color=color[u], fontsize=10)
-            # plot P_sys
-            plt.annotate("%s" % 'P_sys='+str( "{:.2f}".format(env.P_sys) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.15),color=color[u], fontsize=10)
+            plt.annotate("%s" % 'TP='+str( "{:.2f}".format(env.Throughput[u]) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.12),color=color[u], fontsize=10)
             # activeBS
             activatedBS = list(set([item for sublist in clustering_policy_UE for item in sublist]))
             plt.annotate("%s" % '#actBS='+str( "{:.2f}".format(len(activatedBS)) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.18),color=color[u], fontsize=10)
@@ -155,6 +140,10 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
             plt.annotate("%s" % 'MCAP='+str( "{:.2f}".format(env.missCounterAP) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.21),color=color[u], fontsize=10)
             # MCCPU
             plt.annotate("%s" % 'MCCPU='+str( "{:.2f}".format(env.missCounterCPU) ), xy=(xx_u,yy_u), xytext=(xx_u-0.025, yy_u-0.24),color=color[u], fontsize=10)
+            plt.title(methodName+'EE:'+str("{:.2f}".format(EE) )\
+                                +';TP:'+str("{:.2f}".format(sum(env.Throughput)) )\
+                                +';Psys:'+str("{:.2f}".format(env.P_sys) ) 
+                    )
         # plot Clustering
         if clustering_policy_UE:
             useBS = clustering_policy_UE[u]
@@ -163,15 +152,14 @@ def plot_UE_BS_distribution_Cache(env,clustering_policy_UE,caching_policy_BS,EE,
                 yy_bs = env.bs_coordinate[bs,1]
                 plt.plot([xx_u,xx_bs],[yy_u,yy_bs],linestyle='-',color=color[u])
     
-    plt.xlabel("x (km)",fontsize=14); plt.ylabel("y (km)",fontsize=14)
+    plt.xlabel("x (km)"); plt.ylabel("y (km)")
     plt.tight_layout()
     EE = "{:.2f}".format(EE)
-    plt.title(methodName+' sampled EE:'+str(EE))
     #plt.axis('equal')
-    #plt.axis([-0.7, 0.6, -0.6, 0.6]) # 10.5.20.2
-    plt.axis([-0.2, 0.5, -0.2, 0.5]) # 4.4.5.2
-    #plt.legend(loc = 'lower left', fontsize=10)
-    plt.legend(loc = 'upper right', fontsize=10)
+    plt.axis([-0.7, 0.6, -0.6, 0.6]) # 10.5.20.2
+    #plt.axis([-0.2, 0.5, -0.2, 0.5]) # 4.4.5.2
+    plt.legend(loc = 'lower left', fontsize=10) # 10.5.20.2
+    #plt.legend(loc = 'upper right', fontsize=14) # 4.4.5.2
     if isDetail:
         plt.savefig(filename +'Detailed.png', format='png',dpi=120)
     else:
@@ -361,7 +349,7 @@ class BS(gym.Env):
                                     self.clustering_state.flatten(),
                                     self.caching_state.flatten(),
                                     self.reqStatistic_norm.flatten()]) 
-        elif self.obsIdx==2:  # OBS2 [Paper Oberservation]
+        elif self.obsIdx==2:  # OBS2
             self.s_ = np.hstack([  self.g.real.flatten(),
                                     self.g.imag.flatten(),
                                     self.clustering_state.flatten(),

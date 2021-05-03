@@ -13,6 +13,7 @@ from torchviz import make_dot
 from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 import numpy as np
+import collections 
 import time,copy,os,csv,random,pickle
 import matplotlib
 import matplotlib.pyplot as plt
@@ -45,15 +46,15 @@ plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 '''
-'''
-font = {'family' : 'sans-serif',
+
+font = {'family' : 'Verdana',
         'weight' : 'normal',
-        'size'   : 14}
+        'size'   : 12}
 
 matplotlib.rc('font', **font)
 markerSize = 20*4**1
-'''
-linestyles = ['-.', '-', '--', ':']
+
+linestyles = [':', '-', '--', '-.']
 #####################################
 def plotMetric(poolEE,poolBestEE):
     xScale = 100
@@ -128,16 +129,22 @@ def plotHistory(env,filename,isEPS=False,loadBF=False):
         env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
     #--------------------------------------------------------------------------------------------- 
     # Plot EE/HR/TP/Psys/MCAP/MCCPU
-    plotTopic(env,filename,topic='EE',xLabel='t',yLabel='Bits/J',yScale='linear',\
+    #plotBrokenAxis(env,filename,topic='EE',xLabel='t',yLabel='Bits/J',yScale='linear',\
+    #    line_BF=poolEE_BF,line_RL1act=poolEE_RL1act,line_RL2act=poolEE_RL2act,line_BM1=poolEE_BM1,line_BM2=poolEE_BM2,line_BM3=poolEE_BM3,isEPS=isEPS)
+    plotTopic(env,filename,topic='EE',xLabel='t',yLabel='Bits/J',yScale='log',\
         line_BF=poolEE_BF,line_RL1act=poolEE_RL1act,line_RL2act=poolEE_RL2act,line_BM1=poolEE_BM1,line_BM2=poolEE_BM2,line_BM3=poolEE_BM3,isEPS=isEPS)
-
+    
     plotTopic(env,filename,topic='HR',xLabel='t',yLabel='Ratio',yScale='linear',\
         line_BF=poolHR_BF,line_RL1act=poolHR_RL1act,line_RL2act=poolHR_RL2act,line_BM1=poolHR_BM1,line_BM2=poolHR_BM2,line_BM3=poolHR_BM3,isEPS=isEPS)
 
+    #plotBrokenAxis(env,filename,topic='TP',xLabel='t',yLabel='Bits/s',yScale='linear',\
+    #    line_BF=poolTP_BF,line_RL1act=poolTP_RL1act,line_RL2act=poolTP_RL2act,line_BM1=poolTP_BM1,line_BM2=poolTP_BM2,line_BM3=poolTP_BM3,isEPS=isEPS)
     plotTopic(env,filename,topic='TP',xLabel='t',yLabel='Bits/s',yScale='linear',\
         line_BF=poolTP_BF,line_RL1act=poolTP_RL1act,line_RL2act=poolTP_RL2act,line_BM1=poolTP_BM1,line_BM2=poolTP_BM2,line_BM3=poolTP_BM3,isEPS=isEPS)
 
-    plotTopic(env,filename,topic='Psys',xLabel='t',yLabel='W',yScale='linear',\
+    #plotBrokenAxis(env,filename,topic='Psys',xLabel='t',yLabel='W',yScale='linear',\
+    #    line_BF=poolPsys_BF,line_RL1act=poolPsys_RL1act,line_RL2act=poolPsys_RL2act,line_BM1=poolPsys_BM1,line_BM2=poolPsys_BM2,line_BM3=poolPsys_BM3,isEPS=isEPS)
+    plotTopic(env,filename,topic='Psys',xLabel='t',yLabel='W',yScale='log',\
         line_BF=poolPsys_BF,line_RL1act=poolPsys_RL1act,line_RL2act=poolPsys_RL2act,line_BM1=poolPsys_BM1,line_BM2=poolPsys_BM2,line_BM3=poolPsys_BM3,isEPS=isEPS)
 
     plotTopic(env,filename,topic='MCAP',xLabel='t',yLabel='Counts',yScale='linear',\
@@ -176,19 +183,19 @@ def plotTopic(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=N
     #---------------------------------------------------------------------------------------------
     # plot Brute Force
     if line_BF!=None:
-        plt.plot(range(nXpt),line_BF,'k:',label='Brute Force')
+        plt.plot(range(nXpt),line_BF,'k:',label='Brute Force',linewidth=4)
         finalValue = "{:.2f}".format(line_BF[-1])
         #plt.annotate(finalValue, (nXpt,line_BF[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='k')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 1act
     if line_RL1act != None:
-        plt.plot(range(nXpt),line_RL1act,'b-',label='Proposed')
+        plt.plot(range(nXpt),line_RL1act,'b-',label='Proposed',linewidth=3)
         finalValue = "{:.2f}".format(line_RL1act[-1])
         #plt.annotate(finalValue, (nXpt,line_RL1act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='b')
     #---------------------------------------------------------------------------------------------
     # plot DDPG 2act
     if line_RL2act != None:
-        plt.plot(range(nXpt),line_RL2act,'r-',label='Proposed 2act')
+        plt.plot(range(nXpt),line_RL2act,'r-',label='Proposed 2act',linewidth=3)
         finalValue = "{:.2f}".format(line_RL2act[-1])
         #plt.annotate(finalValue, (nXpt,line_RL2act[-1]),textcoords="offset points",xytext=(20,-10),ha='center',color='r')
     #---------------------------------------------------------------------------------------------
@@ -197,15 +204,15 @@ def plotTopic(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=N
         #for l in range(1,env.L+1):
             # plot BM1
             #plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1('+r'$l=$'+str(l)+')')
-            plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1(l='+str(l)+')')
+            plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1(l='+str(l)+')',linewidth=2)
             finalValue = "{:.2f}".format(line_BM1[l][-1])
             #plt.annotate(finalValue, (nXpt,line_BM1[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='g')
             # plot BM2
-            plt.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2(l='+str(l)+')')
+            plt.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2(l='+str(l)+')',linewidth=1.2)
             finalValue = "{:.2f}".format(line_BM2[l][-1])
             #plt.annotate(finalValue, (nXpt,line_BM2[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
             # plot BM3
-            plt.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3(l='+str(l)+')')
+            plt.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3(l='+str(l)+')',linewidth=1)
             finalValue = "{:.2f}".format(line_BM3[l][-1])
             #plt.annotate(finalValue, (nXpt,line_BM3[-1]),textcoords="offset points",xytext=(20,10),ha='center',color='y')
     #---------------------------------------------------------------------------------------------
@@ -223,14 +230,103 @@ def plotTopic(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=N
     plt.xlim(0,nXpt-1)
     #plt.tight_layout()
     plt.autoscale()
-    plt.xlabel(xLabel) # x label
+    plt.xlabel(xLabel,fontsize=12) # x label
     #plt.xlabel(r'x') # x label
-    plt.ylabel(yLabel) # y label
+    plt.ylabel(yLabel,fontsize=12,loc='top') # y label
     plt.yscale(yScale)
-    plt.savefig(filename + topic +'.png', format='png',dpi=120)
+    plt.legend(loc = 'lower left', fontsize=10)
+    plt.savefig(filename + topic +'.png', format='png',dpi=600,bbox_inches='tight')
     if isEPS:
-        plt.savefig(filename + topic +'.eps', format='eps',dpi=600)
+        plt.savefig(filename + topic +'.eps', format='eps',dpi=600,bbox_inches='tight')
 
+def plotBrokenAxis(env,filename,topic,xLabel,yLabel,yScale,line_BF=None,line_RL1act=None,line_RL2act=None,line_BM1=None,line_BM2=None,line_BM3=None,isEPS=False):
+    plt.clf()
+    nXpt=len(line_BM1[0])
+
+    f, (ax, ax2) = plt.subplots(2, 1, sharex=True)
+    # plot the same data on both axes
+    # plot Brute Force
+    if line_BF!=None:
+        ax.plot(range(nXpt),line_BF,'k:',label='Brute Force',linewidth=4)
+        ax2.plot(range(nXpt),line_BF,'k:',label='Brute Force',linewidth=4)
+    #---------------------------------------------------------------------------------------------
+    # plot DDPG 1act
+    if line_RL1act != None:
+        ax.plot(range(nXpt),line_RL1act,'b-',label='Proposed',linewidth=3)
+        ax2.plot(range(nXpt),line_RL1act,'b-',label='Proposed',linewidth=3)
+    #---------------------------------------------------------------------------------------------
+    # plot DDPG 2act
+    if line_RL2act != None:
+        ax.plot(range(nXpt),line_RL2act,'r-',label='Proposed 2act',linewidth=3)
+        ax2.plot(range(nXpt),line_RL2act,'r-',label='Proposed 2act',linewidth=3)
+    #---------------------------------------------------------------------------------------------
+    if line_BM1!=None and line_BM2!=None and line_BM3!=None:
+        for l in [1,env.L]:
+        #for l in range(1,env.L+1):
+            # plot BM1
+            #plt.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1('+r'$l=$'+str(l)+')')
+            ax.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1(l='+str(l)+')',linewidth=2)
+            ax2.plot(range(nXpt),line_BM1[l],color='g',linestyle=linestyles[l],label='BM1(l='+str(l)+')',linewidth=2)
+            # plot BM2
+            ax.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2(l='+str(l)+')')
+            ax2.plot(range(nXpt),line_BM2[l],color='y',linestyle=linestyles[l],label='BM2(l='+str(l)+')')
+            # plot BM3
+            ax.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3(l='+str(l)+')')
+            ax2.plot(range(nXpt),line_BM3[l],color='c',linestyle=linestyles[l],label='BM3(l='+str(l)+')')
+    # zoom-in / limit the view to different portions of the data
+    # Scenario1: EE
+    #ax.set_ylim(195, 215)
+    #ax2.set_ylim(0, 5)
+    
+    # Scenario1: TP
+    ax.set_ylim(5.8, 6.1)
+    ax2.set_ylim(0, 4.5)
+
+    # Scenario1: Psys
+    #ax.set_ylim(1, 1.55) 
+    #ax2.set_ylim(0.01, 0.03)  
+    
+
+    # hide the spines between ax and ax2
+    ax.spines['bottom'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.tick_params(labeltop=False)  # don't put tick labels at the top
+    ax2.xaxis.tick_bottom()
+    # This looks pretty good, and was fairly painless, but you can get that
+    # cut-out diagonal lines look with just a bit more work. The important
+    # thing to know here is that in axes coordinates, which are always
+    # between 0-1, spine endpoints are at these locations (0,0), (0,1),
+    # (1,0), and (1,1).  Thus, we just need to put the diagonals in the
+    # appropriate corners of each of our axes, and so long as we use the
+    # right transform and disable clipping.
+    d = .015  # how big to make the diagonal lines in axes coordinates
+    # arguments to pass to plot, just so we don't keep repeating them
+    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+    ax.plot(( -d, +d), (-d, +d), **kwargs)        # top-left diagonal
+    ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+    #plt.show()
+    ax.grid()
+    ax2.grid()
+    
+    #plt.xlim(0,nXpt-1)
+    #plt.tight_layout()
+    #plt.autoscale()
+    plt.xlabel(xLabel,fontsize=12) # x label
+    #plt.ylabel(yLabel,fontsize=12) # y label
+    ax.set_ylabel(yLabel, loc='top',fontsize=12)
+    plt.yscale(yScale)
+    plt.legend(loc = 'lower left', fontsize=10)
+    plt.savefig(filename + topic +'.png', format='png',dpi=120,bbox_inches='tight')
+    if isEPS:
+        plt.savefig(filename + topic +'.eps', format='eps',dpi=120,bbox_inches='tight')
+    print('try broken axis')
+  
 def trainModel(env,actMode,changeReq,changeChannel,loadActor,randSEED=0):
     # new ACT 
     #modelPath = 'D:\\/Model/' + env.TopologyName+'/'
@@ -721,8 +817,8 @@ if __name__ == '__main__':
     envSeed = 0
     nItr = 100
     # Good case: 4.4.5.2 [31] / 10.5.20.2 [3,6]
-    for randSEED in range(1,30):
-    #for randSEED in [31]:
+    #for randSEED in range(1,30):
+    for randSEED in [31]:
         print('randSEED:',randSEED)
         print('Execution Timestamp:',datetime.now())
         #####################  hyper parameters  ####################
@@ -730,10 +826,9 @@ if __name__ == '__main__':
         np.random.seed(randSEED)
         torch.manual_seed(randSEED)
         torch.cuda.manual_seed_all(randSEED)
-        max_EE = -1
-        allWin=False
+        allWin = True
         #------------------------------------------------------------------------
-        
+        '''
         # Training Phase
         # new ENV
         env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0,obsIdx=2)
@@ -748,12 +843,12 @@ if __name__ == '__main__':
         # new ENV
         env = BS(nBS=4,nUE=4,nMaxLink=2,nFile=5,nMaxCache=2,loadENV = True,SEED=0,obsIdx=2)
         #env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV=True,SEED=envSeed,obsIdx=1)
-        if allWin or max_EE==-1:
+        if allWin:
             lossCount = evaluateModel(env,actMode=actMode, nItr=nItr,randSEED=randSEED,loadCT=True,isBF=True)
             # Plot Performance
             filename = 'data/'+env.TopologyCode+'/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
             plotHistory(env,filename,isEPS=False,loadBF=False)
-        
+        '''
     #==============================================================================================
     '''
     # plot Evaluation Final for 4.4.5.2
@@ -786,24 +881,24 @@ if __name__ == '__main__':
     #
     filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
     # BF PV
-    plot_UE_BS_distribution_Cache(env, poolCL_BF[sampled], poolCA_BF[sampled], poolEE_BF[sampled],filename+'BF',isEPS=True)
     plot_UE_BS_distribution_Cache(env, poolCL_BF[sampled], poolCA_BF[sampled], poolEE_BF[sampled],filename+'BF',isDetail=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_BF[sampled], poolCA_BF[sampled], poolEE_BF[sampled],filename+'BF',isEPS=True)
+    
     # RL PV
-    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
     plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isDetail=True)
+    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
     # BM PV
     for l in [1,env.L]:
-        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
         plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isDetail=True)
         plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isDetail=True)
         plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isDetail=True) 
-    
-    '''
+        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
+    '''    
     #==============================================================================================    
     # plot Evaluation Final for 10.5.20.2
-    '''
+    
     envSeed = 0
     randSEED = 3
     nItr = 100
@@ -813,7 +908,7 @@ if __name__ == '__main__':
     #------------------------------------------------------------------------
     # Plot Performance
     filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EvaluationPhase/'+'['+ str(randSEED) +']'+ env.TopologyName +'_Evaluation_'
-    plotHistory(env,filename,isEPS=True,loadBF=False)
+    #plotHistory(env,filename,isEPS=True,loadBF=False)
     #------------------------------------------------------------------------
     # Plot Sampled CL/CA Policy Visualization
     # Load RL Policies
@@ -829,18 +924,41 @@ if __name__ == '__main__':
         env, poolEE_BM3,poolTP_BM3,poolPsys_BM3,poolHR_BM3,poolMCAP_BM3,poolMCCPU_BM3,poolCL_BM3,poolCA_BM3 = pickle.load(f)
     #
     filename = 'data/'+env.TopologyCode+'/[envSeed '+str(envSeed)+'][randSeed '+str(randSEED)+'][OBS1]/EVSampledPolicy/'+'['+ str(randSEED) +']'+ env.TopologyName +'_EVSampledPolicy_'
-    # RL PV
-    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
-    plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isDetail=True)
-    # BM PV
-    for l in [1,env.L]:
-        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
-        plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isDetail=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isDetail=True)
-        plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isDetail=True) 
     '''
+    for sampled in range(0,100,10):
+        # RL PV
+        plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isEPS=True)
+        plot_UE_BS_distribution_Cache(env, poolCL_RL[sampled], poolCA_RL[sampled], poolEE_RL[sampled],filename+'Proposed',isDetail=True)
+        # BM PV
+        for l in [1,env.L]:
+            plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isEPS=True)
+            plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isEPS=True)
+            plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isEPS=True) 
+            plot_UE_BS_distribution_Cache(env, poolCL_BM1[l][sampled], poolCA_BM1[l][sampled], poolEE_BM1[l][sampled],filename+'BM1(l='+str(l)+')',isDetail=True)
+            plot_UE_BS_distribution_Cache(env, poolCL_BM2[l][sampled], poolCA_BM2[l][sampled], poolEE_BM2[l][sampled],filename+'BM2(l='+str(l)+')',isDetail=True)
+            plot_UE_BS_distribution_Cache(env, poolCL_BM3[l][sampled], poolCA_BM3[l][sampled], poolEE_BM3[l][sampled],filename+'BM3(l='+str(l)+')',isDetail=True) 
+    '''
+    for sampled in range(1,100):
+        for k in range(len(poolCL_RL[sampled])):
+            if (poolCL_RL[sampled][k] == poolCL_RL[sampled-1][k]).all():
+                print('the same')
+            else:
+                print('diff occur at '+sampled)
+
+    for sampled in range(1,100):
+        for k in range(len(poolCL_BM1[1][sampled])):
+            if (poolCL_BM1[1][sampled][k] == poolCL_BM1[1][sampled-1][k]).all():
+                print('the same')
+            else:
+                print('diff occur at '+sampled)
+    for sampled in range(1,100):
+        for k in range(len(poolCL_BM1[3][sampled])):
+            if (poolCL_BM1[3][sampled][k] == poolCL_BM1[3][sampled-1][k]).all():
+                print('the same')
+            else:
+                print('diff occur at '+sampled)
+            
+
     #==============================================================================================
     # multi-instance training
     '''
