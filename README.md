@@ -2,10 +2,19 @@
 The simulation of paper: Joint Cooperation Clustering and Content Caching in Cell-Free Massive MIMO Networks.
 
 A. Directory Path
-  1. Topology:                data/{topology name}/Topology 
-  2. Model:                   data/{topology name}/Model
-  3. [Figure] performance:    data/{topology name}/EvaluationPhase
-  4. [Figure] Sampled policy: data/{topology name}/EVSampledPolicy
+```
+data 
+├── 4.4.5.2               # Topology with 4 UE/4 AP/5 File/2 Cache 
+│   ├── BF                # Brute Force result (pkl and png)
+│   ├── Topology          # Topology (pkl and png)
+│   ├── Preview           # In Training phase, we can preview the performance result in this folder, the result will update each 1000 time slot
+│   ├── Model             # After training is done, the trained model will be saved in this folder. In single actor case, there are 2 model (actor and critic).
+│   ├── EvaluationPhase   # After evaluation is done, plotHistory() will plot the performnace result and save the corresponding figures in this folder
+│   └── EVSampledPolicy   # In evaluation phase, we will take a policy snapshot in half length of evaluation, the snapshot will save in this folder and be plotted via plot_UE_BS_distribution_Cache()
+└── 10.5.20.2
+    └── (same as above)
+```
+
 
 B. Code mainbody: 
   1. newSimulate.py
