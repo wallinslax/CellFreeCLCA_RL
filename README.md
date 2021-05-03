@@ -32,7 +32,7 @@ E. Generate arbitrary topology:\
 F. Derve Brute Force (BF) result (Direct example)\
 In newENV(), run
 ```
-env=BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = True,SEED=0)\
+env=BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = True,SEED=0)
 env.getOptEE_BF(isSave=True)
 ```
 
