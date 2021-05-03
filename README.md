@@ -2,10 +2,10 @@
 The simulation of paper: Joint Cooperation Clustering and Content Caching in Cell-Free Massive MIMO Networks.
 
 A. Directory Path
-  1.Topology:           data/{topology name}/Topology 
-  2.Model:              data/{topology name}/Model
+  1.Topology: data/{topology name}/Topology 
+  2.Model: data/{topology name}/Model
   3.performance figure: data/{topology name}/EvaluationPhase
-  4.Sampled policy:     data/{topology name}/EVSampledPolicy
+  4.Sampled policy: data/{topology name}/EVSampledPolicy
   5.
 
 B. Code mainbody: 
