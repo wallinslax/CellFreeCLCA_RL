@@ -23,9 +23,13 @@ D. Standard model training and evaluation procedure:(run newSimulate.py)
   4. plot policy sampled in evaluation phase using plot_UE_BS_distribution_Cache()
 
 E. Generate arbitrary topology:
-  1. in newENV(), declare BS by set parameter loadENV=False
-    EX: env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = False,SEED=0,obsIdx=1)
-    It will produce a new topology in data/10.5.20.2/Topology in pkl form and png preview
+  In newENV(), declare class BS by set parameter loadENV=False \
+  EX: env = BS(nBS=10,nUE=5,nMaxLink=3,nFile=20,nMaxCache=2,loadENV = False,SEED=0,obsIdx=1) \
+  It will produce a new topology in data/10.5.20.2/Topology in pkl form and png preview
     
-F. 
+F. Derve Brute Force (BF) result (Direct example)
+In newENV(), run 
+env=BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = True,SEED=0)
+env.getOptEE_BF(isSave=True)
+
     
