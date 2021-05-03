@@ -2,10 +2,10 @@
 The simulation of paper: Joint Cooperation Clustering and Content Caching in Cell-Free Massive MIMO Networks.
 
 A. Directory Path
-  1. Topology:            data/{topology name}/Topology 
-  2. Model:               data/{topology name}/Model
-  3. performance figure:  data/{topology name}/EvaluationPhase
-  4. Sampled policy:      data/{topology name}/EVSampledPolicy
+  1. Topology:                data/{topology name}/Topology 
+  2. Model:                   data/{topology name}/Model
+  3. [Figure] performance:    data/{topology name}/EvaluationPhase
+  4. [Figure] Sampled policy: data/{topology name}/EVSampledPolicy
 
 B. Code mainbody: 
   1. newSimulate.py
@@ -13,8 +13,8 @@ B. Code mainbody:
   3. newDDPG.py
   
 C. Dependency:
-  newSimulate.py <- newENV.py
-  newSimulate.py <- newDDPG.py
+  1. newSimulate.py <- newENV.py
+  2. newSimulate.py <- newDDPG.py
 
 D. Standard model training and evaluation procedure:
   1. Train model using trainModel()
