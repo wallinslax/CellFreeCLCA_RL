@@ -20,6 +20,8 @@ B. Code mainbody:
   1. newSimulate.py
   2. newENV.py
   3. newDDPG.py
+
+The code is run under Pytorch:1.8.0.dev20201027 and Python 3.8.5.
   
 C. Dependency:
   1. newSimulate.py <- newENV.py
