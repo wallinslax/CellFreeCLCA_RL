@@ -1,5 +1,4 @@
 # CellFreeCLCA_RL
-The simulation of paper: Joint Cooperation Clustering and Content Caching in Cell-Free Massive MIMO Networks.
 
 A. Directory Path
 ```
