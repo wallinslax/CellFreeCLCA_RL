@@ -1,3 +1,4 @@
+
 # CellFreeCLCA_RL
 
 A. Directory Path
@@ -46,4 +47,5 @@ env=BS(nBS=10,nUE=5,nMaxLink=nMaxLink,nFile=20,nMaxCache=2,loadENV = True,SEED=0
 env.getOptEE_BF(isSave=True)
 ```
 
+G. Paper Link https://ieeexplore.ieee.org/document/9625449
     
